@@ -1,5 +1,5 @@
 ---
-description: Triagem de alerta de produção durante o oncall — classifica o alerta, decide entre corrigir agora, escalar ou reportar e esperar o dia útil, sem nunca escrever em prod.
+description: Triagem de alerta de produção durante o oncall — classifica o alerta, decide entre corrigir agora, escalar ou reportar e esperar o dia útil, sem nunca escrever em produção.
 argument-hint: <mensagem do PagerDuty/Slack ou erro do Datadog>
 ---
 
@@ -11,38 +11,50 @@ A única pergunta que esta skill existe pra responder:
 
 > **tem que agir agora, senão o sistema cai — ou dá pra reportar e resolver no próximo dia útil?**
 
-Na prática quase nunca é bug de código. É spike de fila, job travado no Rundeck ou dependência externa. Investigar solto em prod às 3h da manhã custa mais do que resolve.
+Na prática quase nunca é bug de código. É spike de fila, job agendado travado ou dependência
+externa. Investigar solto em produção às 3h da manhã custa mais do que resolve.
+
+Canais de alerta, perfis de nuvem, destinatário do escalonamento e quais serviços tocam dinheiro vêm
+da tabela de contexto do projeto (para a Celesta: `celesta-microservices/context.yaml`, chave
+`oncall:`).
 
 ## Como a conversa roda
 
-Vale o padrão de sempre (`memory/preferences.md`), com um agravante: é madrugada.
+Vale o padrão de sempre (`../memory/preferences.md`), com um agravante: é madrugada.
 
-- Frases curtas, uma ideia por vez. Pergunta e resposta. A cabeça do Lucas não pode cansar de ler antes de ele conseguir desligar.
+- Frases curtas, uma ideia por vez. Pergunta e resposta. A cabeça dele não pode cansar de ler antes
+  de ele conseguir desligar.
 - Zero relatório de IA. Sem preâmbulo, sem recap, sem repetir o que ele acabou de colar.
 - Opinião real. Se o palpite dele sobre a causa não fecha com o que o log mostra, dizer na hora.
-- **Antes de cada leitura, anunciar a intenção em uma frase**: "quero rodar essa query pra ver o wallet do player X", "quero olhar a profundidade da fila Y". Ele aprova ou corta.
+- **Antes de cada leitura, anunciar a intenção em uma frase**: "quero rodar essa query pra ver a carteira do usuário X", "quero olhar a profundidade da fila Y". Ele aprova ou corta.
 
 ## Guardrails de produção — inegociável
 
-**Nenhuma escrita em prod pela minha mão.** Sem `UPDATE`/`DELETE`, sem rerun de job no Rundeck, sem `aws ... set-desired-capacity`, sem restart, sem deploy, sem rollback.
+**Nenhuma escrita em produção pela minha mão.** Sem `UPDATE`/`DELETE`, sem rerun de job agendado,
+sem alterar capacidade de auto scaling, sem restart, sem deploy, sem rollback.
 
 Leitura é livre depois de anunciada:
-- `aws` read-only com o perfil certo — `sqs get-queue-attributes`, `cloudwatch get-metric-statistics`, `autoscaling describe-auto-scaling-groups`, `logs filter-log-events`
+- CLI do provedor de nuvem somente-leitura, com o perfil certo — atributos de fila, estatística de
+  métrica, descrição de auto scaling, filtro de log
 - `db-query` só `SELECT`
-- MCP Datadog / PagerDuty / Slack quando autorizados
+- Ferramentas de APM, de plantão e de chat quando autorizadas
 
-Toda ação mutante vira **comando escrito pro Lucas executar**, com o efeito esperado e como reverter. Ele executa, não eu.
+Toda ação mutante vira **comando escrito para o usuário executar**, com o efeito esperado e como
+reverter. Ele executa, não eu.
 
 Se a ação corrige o sintoma sem explicar a causa (rodar de novo o job travado sem saber por que travou), dizer isso na hora — não deixar sair da conversa como se estivesse resolvido.
 
-**Ambiente:** canal `#celesta-alarms-prod-1` → perfil AWS `celesta-prod-1`; `#celesta-alarms-prod-2` → `celesta-prod-2`. Confirmar qual antes de qualquer leitura na AWS — olhar a fila do ambiente errado leva a conclusão errada com confiança total.
+**Ambiente:** o canal de onde veio o alerta decide o perfil de nuvem — o mapeamento está na tabela
+de contexto. Confirmar qual **antes** de qualquer leitura: olhar a fila do ambiente errado produz uma
+conclusão errada com confiança total, que é o pior desfecho possível às 3h da manhã.
 
 ## 0. Histórico antes de investigar
 
 Primeira coisa, sempre — antes de qualquer hipótese:
 
-- Pedir pro Lucas buscar no `#celesta-alarms-prod-1`/`-2` pelo nome do monitor ou pela classe da exceção, e ler as threads. Ele esquece disso, e o debate antigo costuma já ter a resposta.
-- Checar `memory/oncall/` no mesmo momento.
+- Pedir para o usuário buscar nos canais de alerta pelo nome do monitor ou pela classe da exceção, e
+  ler as threads. Ele esquece disso, e o debate antigo costuma já ter a resposta.
+- Checar a pasta de incidentes na memória do projeto no mesmo momento.
 
 Se já aconteceu: o que fizeram, funcionou, é o mesmo padrão? Se for, pular direto pro balde e ir pra decisão.
 
@@ -52,44 +64,56 @@ Perguntar o mínimo necessário pra escolher um dos cinco. O sinal que distingue
 
 | Balde | Sinal que distingue | Ação típica |
 |---|---|---|
-| Spike / acúmulo de fila | profundidade da fila **subindo** vs. drenando; erro concentrado numa janela | drenando → observar; subindo → mais workers no ASG |
-| Job travado (Rundeck) | horário bate com a janela do job; última execução pendurada, sem fim | matar e rodar de novo |
-| Dependência externa | 5xx/timeout concentrado num host de terceiro (PSP, provedor de jogo, SB) | reportar, chamado do lado deles |
+| Spike / acúmulo de fila | profundidade da fila **subindo** vs. drenando; erro concentrado numa janela | drenando → observar; subindo → mais workers |
+| Job agendado travado | horário bate com a janela do job; última execução pendurada, sem fim | matar e rodar de novo |
+| Dependência externa | 5xx/timeout concentrado num host de terceiro | reportar, chamado do lado deles |
 | Erro de código novo | exceção que não existia; começou junto com um deploy | ver o diff do deploy → rollback vs. hotfix |
-| Ruído conhecido | bate com o histórico do Slack ou com `memory/oncall/` | reportar e dormir |
+| Ruído conhecido | bate com o histórico do canal ou com um incidente já registrado | reportar e dormir |
 
 Se nada encaixa, dizer que não encaixa em vez de forçar um balde.
 
-## 2. Se a dúvida é "o pod caiu de verdade": ver no Freelens, não no Datadog
+## 2. Se a dúvida é "o pod caiu de verdade": confirmar fora da ferramenta de APM
 
-Quando o sinal é sobre tráfego/disponibilidade e existe a menor dúvida de que o próprio Datadog pode estar mentindo (métrica zerada, "No Data", etc.), nunca fechar o diagnóstico só com o Datadog. Confirmar por uma fonte que não passa por ele — Freelens (ou Lens/kubectl):
+Quando o sinal é sobre tráfego ou disponibilidade e existe a menor dúvida de que o próprio APM pode
+estar mentindo (métrica zerada, "No Data"), nunca fechar o diagnóstico só com ele. Confirmar por uma
+fonte que não passa por ele — um cliente de Kubernetes como Freelens, Lens ou o próprio `kubectl`:
 
-- **Lista de pods**: `Running`, `Ready`, contagem de restart. Vem da API do Kubernetes, não do Datadog.
-- **Coluna de CPU/memória, na mesma lista**: vem do `metrics-server` do Kubernetes, também não é Datadog. CPU perto de zero em todos os pods ao mesmo tempo é sinal forte de que não tem carga real chegando — não é só métrica cega.
-- **Aba de Logs do pod**: log real do container. Requisição sendo processada aparece aqui mesmo se o Datadog não estiver contando nada.
+- **Lista de pods**: `Running`, `Ready`, contagem de restart. Vem da API do Kubernetes.
+- **Coluna de CPU/memória, na mesma lista**: vem do `metrics-server` do Kubernetes. CPU perto de zero
+  em todos os pods ao mesmo tempo é sinal forte de que não há carga real chegando — não é métrica cega.
+- **Logs do pod**: log real do container. Requisição sendo processada aparece aqui mesmo que o APM
+  não esteja contando nada.
 - **Se ainda em dúvida, exec no pod + `netstat`/`ss`**: confirma conexão TCP real, nível de sistema operacional. Mais invasivo, usar só se os anteriores não bastarem.
-- **Pra saber se a requisição sequer chegou no cluster**: `RequestCount` do Load Balancer no CloudWatch (AWS) — fora do Kubernetes e fora do Datadog.
+- **Pra saber se a requisição sequer chegou no cluster**: a métrica de contagem de requisições do load
+  balancer, no monitoramento do provedor de nuvem — fora do Kubernetes e fora da ferramenta de APM.
 
-Regra prática: pod saudável (Running, sem restart) + CPU real ociosa = tráfego realmente não está chegando, o problema é externo ou upstream, não é problema de métrica. Pod saudável + CPU com atividade real + Datadog mostrando "No Data" = aí sim, suspeitar do próprio Datadog.
+Regra prática: pod saudável (Running, sem restart) + CPU real ociosa = o tráfego realmente não está
+chegando, o problema é externo ou upstream, não é problema de métrica. Pod saudável + CPU com
+atividade real + APM mostrando "No Data" = aí sim, suspeitar da ferramenta.
 
 ## 3. As 4 perguntas que decidem
 
 Responder explicitamente, com evidência, antes de concluir qualquer coisa:
 
 1. **Está crescendo?** Volume estável ou caindo quase nunca é emergência.
-2. **Toca dinheiro ou jogador?** `payment` / `wallet` / `sb-wallet` sobem a régua. `statistics` / `segment` quase nunca.
+2. **Toca dinheiro ou usuário final?** Serviço de pagamento ou de carteira sobe a régua; serviço de
+   estatística ou de segmentação quase nunca. Quais são quais está na tabela de contexto.
 3. **Recupera sozinho?** Tem retry, DLQ, cron que reprocessa?
 4. **É reversível de manhã, ou o dado se perde?** Esta é a que de fato define acordar alguém.
 
 ## 4. Três saídas — sempre uma delas, nomeada
 
-**CORRIGIR** — está ao alcance dele. Eu escrevo o passo a passo (comando do Rundeck, ajuste do ASG, query de verificação); ele executa; conferimos juntos e confirmamos que o sintoma parou. Não encerrar sem essa confirmação.
+**CORRIGIR** — está ao alcance dele. Eu escrevo o passo a passo (o comando, o ajuste, a query de
+verificação); ele executa; conferimos juntos e confirmamos que o sintoma parou. Não encerrar sem essa
+confirmação.
 
-**ESCALAR** — fora do alcance dele. Destinatário: **VP – Janis**. Entrego o texto pronto: o que está quebrado, impacto, o que já foi verificado, o que precisa ser feito, e por que não pode esperar de manhã.
+**ESCALAR** — fora do alcance dele. O destinatário está na tabela de contexto (`oncall.escalation_role`).
+Entrego o texto pronto: o que está quebrado, impacto, o que já foi verificado, o que precisa ser
+feito, e por que não pode esperar de manhã.
 
 **REPORTAR E ESPERAR** — dá pra dormir. Texto do Slack + o que observar amanhã.
 
-## 5. Report pro Slack
+## 5. Report para o canal
 
 Cinco linhas, nada além:
 
@@ -103,6 +127,6 @@ Aguarda dia útil: sim/não — por quê
 
 ## 6. Memória ao final
 
-Escrever `memory/oncall/<AAAA-MM-DD>-<serviço>.md`: alerta, balde, causa raiz (ou "não confirmada"), ação, resultado. Se caiu em REPORTAR E ESPERAR, registrar o que checar depois.
+Escrever `<memória do projeto>/oncall/<AAAA-MM-DD>-<serviço>.md`: alerta, balde, causa raiz (ou "não confirmada"), ação, resultado. Se caiu em REPORTAR E ESPERAR, registrar o que checar depois.
 
-A linha do índice em `MEMORY.md` aponta pra pasta `oncall/`, não pra cada incidente — a pasta cresce todo mês.
+A linha do índice aponta para a **pasta** de incidentes, não para cada um — ela cresce todo mês.

@@ -1,0 +1,143 @@
+# Celesta — tabela de consulta dos specifics que as skills genéricas plugam.
+#
+# Prosa fica em markdown; aqui mora só o que é lookup: nome de serviço, alvo de
+# make, prefixo de commit, mapa de domínio. Eu e os scripts de scripts/ lemos o
+# mesmo arquivo, então o dado existe uma vez só.
+#
+# NENHUM SEGREDO AQUI. Credencial vive em ~/.claude-secrets/ — ver secrets: abaixo.
+
+meta:
+  updated: 2026-09-22
+  root: ~/Desktop/celesta-projects
+
+secrets:
+  vault: ~/.claude-secrets
+  files:
+    dev: celesta-dev.md              # fixtures locais, GUARD_KEY, usuários seeded
+    preprod: celesta-preprod.md      # OAuth BO/Gateway pp1, contas de teste, hosts
+    cms_v2: celesta-cms-v2.md        # admin Strapi pp1
+    prod_findings: celesta-prod-findings.md   # achados de segurança abertos
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Convenção de commit — o hook do repositório rejeita o que não bate.
+# ─────────────────────────────────────────────────────────────────────────────
+commit:
+  regex: '^(((V2|CE(XT|L[MBCD]?)|CLS)|CTB|CSB)-([0-9]*))|hotfix'
+  prefixes: [CEL, CELM, CELB, CELC, CELD, CEXT, CLS, V2, CTB, CSB, hotfix]
+  merge_needs_prefix: true   # "CLS-123 Merge branch 'master' into CLS-123", nunca --no-verify
+  no_ai_attribution: true    # nada de Co-Authored-By / 🤖 / "generated with", em lugar nenhum
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Serviços. `make` lista os alvos que existem naquele repositório.
+# Os Makefiles já encapsulam o docker — script nenhum reimplementa `docker compose exec`.
+# ─────────────────────────────────────────────────────────────────────────────
+defaults:
+  compose_file: docker-compose.dev.yml
+  php_container: php
+  test_log: var/log/phpunit.log
+  make: [build, init, openapi, test, lint]
+
+services:
+  celesta-activity:          {make: [build, init, test, lint, lint-fix, openapi, openapi-fmt], container: api, stack: go}
+  celesta-auth:              {make: [build, init, test, lint, lint-fix, openapi, openapi-fmt], container: api, stack: go}
+  celesta-backoffice:        {make: [build, init, openapi, test, lint]}
+  celesta-backoffice-front:  {make: [build, init, test], stack: front}
+  celesta-cms:               {make: [build, init, openapi, lint, test]}
+  celesta-cms-v2:            {make: [build, init, openapi, test], container: strapi-madnix, stack: strapi}
+  celesta-contact:           {make: [build, init, openapi, test, lint]}
+  celesta-crm:               {make: [build, init, openapi, test, lint]}
+  celesta-documentation:     {make: [build, init, test, lint], container: documentationweb}
+  celesta-etl:               {make: [build, init, lint], stack: python}
+  celesta-fraud:             {make: [build, init, openapi, test, lint]}
+  celesta-game:              {make: [build, init, openapi, test, lint]}
+  celesta-game-go:           {stack: go}
+  celesta-gateway:           {make: [build, init, openapi, test, lint]}
+  celesta-payment:           {make: [build, init, openapi, test, lint, build-sb, init-sb, test-sb]}
+  celesta-promotion:         {make: [build, init, openapi, test, lint], container: php}
+  celesta-scenario:          {make: [build, init, openapi, test, lint]}
+  celesta-scripts:           {make: [build, init]}
+  celesta-segment:           {make: [build, init, openapi, test, lint]}
+  celesta-sensor:            {make: [build, init, test, lint, lint-fix, openapi], container: api, stack: go}
+  celesta-statistics:        {make: [build, init, openapi, test, lint]}
+  celesta-wallet:            {make: [build, init, openapi, test, lint], container: php}
+
+# Bibliotecas compartilhadas: código que NÃO pode nascer dentro de um serviço.
+shared_libraries:
+  celesta-constants:
+    holds: constantes
+    rule: nunca criar constante dentro de um serviço — definir aqui e instalar
+  celesta-job-library:
+    holds: jobs de messenger
+    rule: nunca criar classe de job dentro de um serviço — definir aqui e instalar
+  celesta-dev:
+    holds: config de phpinsights (phpinsights.sh chamado por `make lint`)
+  celesta-fixtures:
+    holds: fixtures compartilhadas entre serviços
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SDD — cada serviço tem seu próprio layout; não assumir um pelo outro.
+# ─────────────────────────────────────────────────────────────────────────────
+sdd:
+  templates: .claude/commands/{spec,plan}.md      # na raiz do serviço
+  output:
+    celesta-promotion:  {spec: sdd/_specs/, plan: sdd/_plans/}
+    celesta-backoffice: {spec: _specs/, plan: _plans/}
+    celesta-gateway:    {spec: _specs/, plan: _plans/}
+  note: verificar o layout do próprio serviço via git log antes de criar o arquivo
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Portas de dev. Gateway e Backoffice são as ÚNICAS portas de entrada legítimas;
+# as internas existem aqui para diagnóstico, não para dirigir um teste.
+# ─────────────────────────────────────────────────────────────────────────────
+dev_endpoints:
+  entry:
+    gateway:    {var: baseUrl,      url: 'http://localhost:93', internal: gatewayweb.docker}
+    backoffice: {var: BO_baseUrl,   url: 'http://localhost:84', internal: backofficeweb.docker}
+  internal_avoid:
+    wallet:     {var: walletUrl,    url: 'http://localhost:88', internal: walletweb.docker}
+    promotion:  {var: promotionUrl, url: 'http://localhost:99', internal: promotionweb.docker}
+    game:       {var: gameUrl,      url: 'http://localhost:89', internal: gameweb.docker}
+
+auth:
+  token_path: /oauth/2.0/token       # BO e Gateway; a rota curta /oauth/token é erro conhecido
+  backoffice:
+    grant_type: password
+    body: flat                       # campo extra/aninhado → 400 "should not contain extra fields"
+    token_var: BO_access_token
+  gateway:
+    grant_type: player
+    requires: [deviceInformation]    # o BO rejeita, o Gateway exige
+    token_var: access_token
+  paths:
+    gateway: '/'                     # domainId e playerId vêm do token, não da URL
+    backoffice: '/api/gateway/domain/{domainId}/'
+    internal: '/api/domain/{domainId}/'
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Marcas. Descobrir em vez de assumir:
+#   GET /api/gateway/domains?status=active
+#   GET /api/gateway/domain/{d}/player/{playerId}   -> 404 até o domínio bater
+# ─────────────────────────────────────────────────────────────────────────────
+domains:
+  56:  {brand: madnix, vertical: casino, default: true}
+  120: {brand: Winoui}
+  174: {brand: Celesta}
+  212: {brand: Celesta.io, warning: NAO MODIFICAR}
+  213: {brand: Sportsbook, vertical: sportsbook}
+  215: {brand: 'Vibrez!', warning: ambiente de teste de outra pessoa}
+
+environments:
+  dev:       {secrets: dev}
+  preprod-1: {secrets: preprod, shared: true, db_read: kubectl + dbal:run-sql}
+  prod-1:    {read_only: true, note: nunca escrever, nunca ler banco}
+  prod-2:    {read_only: true, vertical: sportsbook}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Oncall. O canal decide o perfil de AWS a usar.
+# ─────────────────────────────────────────────────────────────────────────────
+oncall:
+  channels:
+    '#celesta-alarms-prod-1': prod-1
+    '#celesta-alarms-prod-2': prod-2
+  escalation_role: VP
+  rule: alerta de produção não é ticket — vai para /oncall, nunca para o fluxo de spec/plan

@@ -1,0 +1,842 @@
+{
+  "info": {
+    "name": "CLS-1746-CLS-2008 - Custom Attributes (PREPROD-1, LOCAL ONLY - contains credentials, never commit)",
+    "description": "Preprod-1 run of CLS-1746-CLS-2008, driven only through Backoffice and Gateway (VPN required). No direct microservice calls and no guard-secret header - those are local-dev only. Everything it creates is named with the ticket id so it is identifiable and safe for others to ignore. Custom attribute names are ticket-scoped and the two creation steps tolerate an existing configuration, so the collection can be re-run in a shared environment without colliding with other people or with itself.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "BO_baseUrl",
+      "value": "https://backend-api.preprod-1.octopodev.com"
+    },
+    {
+      "key": "BO_oauth_client_id",
+      "value": ""
+    },
+    {
+      "key": "BO_oauth_client_secret",
+      "value": ""
+    },
+    {
+      "key": "BO_username",
+      "value": ""
+    },
+    {
+      "key": "BO_password",
+      "value": ""
+    },
+    {
+      "key": "BO_access_token",
+      "value": ""
+    },
+    {
+      "key": "baseUrl",
+      "value": "https://gateway.preprod-1.octopodev.com"
+    },
+    {
+      "key": "oauth_client_id",
+      "value": ""
+    },
+    {
+      "key": "oauth_client_secret",
+      "value": ""
+    },
+    {
+      "key": "username",
+      "value": ""
+    },
+    {
+      "key": "password",
+      "value": ""
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "domainId",
+      "value": "56"
+    },
+    {
+      "key": "playerId",
+      "value": "282570"
+    },
+    {
+      "key": "rewardConfigId",
+      "value": ""
+    },
+    {
+      "key": "customAttributeName",
+      "value": "cls1746_loyalty"
+    },
+    {
+      "key": "customAttributeValue",
+      "value": "gold"
+    },
+    {
+      "key": "customAttributeConfigId",
+      "value": ""
+    },
+    {
+      "key": "defaultAttributeName",
+      "value": "cls1746_signup"
+    },
+    {
+      "key": "defaultAttributeValue",
+      "value": "organic"
+    },
+    {
+      "key": "defaultAttributeConfigId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Backoffice",
+      "item": [
+        {
+          "name": "1. BO Login (owner)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{BO_baseUrl}}/oauth/2.0/token",
+              "host": [
+                "{{BO_baseUrl}}"
+              ],
+              "path": [
+                "oauth",
+                "2.0",
+                "token"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Create bonus configuration",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"CLS-1746-CLS-2008 custom attributes test\",\n  \"displayName\": \"Custom attributes test\",\n  \"type\": \"deposit\",\n  \"model\": \"direct\",\n  \"offeringMethod\": \"manual\",\n  \"currency\": \"EUR\",\n  \"validDuringDays\": 30,\n  \"claimingEvent\": \"deposit\",\n  \"claimingEventCondition\": {\"depositAmountMin\": 10, \"depositAmountMax\": 100},\n  \"offerPercent\": 100,\n  \"offerUpToAmount\": 100,\n  \"offerValidFor\": 14\n}"
+            },
+            "url": {
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configuration",
+              "host": [
+                "{{BO_baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "gateway",
+                "domain",
+                "{{domainId}}",
+                "bonus_configuration"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('rewardConfigId', String(json.id));",
+                  "pm.test('created disabled', () => pm.expect(json.status).to.eql('disabled'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Enable bonus configuration",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"enabled\"\n}"
+            },
+            "url": {
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configuration/{{rewardConfigId}}",
+              "host": [
+                "{{BO_baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "gateway",
+                "domain",
+                "{{domainId}}",
+                "bonus_configuration",
+                "{{rewardConfigId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('now enabled', () => pm.expect(pm.response.json().status).to.eql('enabled'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Create custom attribute configuration",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{customAttributeName}}\",\n  \"type\": \"string\"\n}"
+            },
+            "url": {
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/reward_configuration/custom-attributes-configuration",
+              "host": [
+                "{{BO_baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "gateway",
+                "domain",
+                "{{domainId}}",
+                "reward_configuration",
+                "custom-attributes-configuration"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const created = pm.response.code === 200;",
+                  "const alreadyThere = pm.response.code === 400 && /already exists/i.test(pm.response.text());",
+                  "pm.test('configuration is available (created now, or already present from an earlier run)', () => {",
+                  "  pm.expect(created || alreadyThere, `unexpected ${pm.response.code}: ${pm.response.text()}`).to.be.true;",
+                  "});",
+                  "if (created) {",
+                  "  pm.collectionVariables.set('customAttributeConfigId', String(pm.response.json().id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4b. Create custom attribute configuration with default (no value ever set)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{defaultAttributeName}}\",\n  \"type\": \"string\",\n  \"defaultValue\": \"{{defaultAttributeValue}}\"\n}"
+            },
+            "url": {
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/reward_configuration/custom-attributes-configuration",
+              "host": [
+                "{{BO_baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "gateway",
+                "domain",
+                "{{domainId}}",
+                "reward_configuration",
+                "custom-attributes-configuration"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const created = pm.response.code === 200;",
+                  "const alreadyThere = pm.response.code === 400 && /already exists/i.test(pm.response.text());",
+                  "pm.test('configuration is available (created now, or already present from an earlier run)', () => {",
+                  "  pm.expect(created || alreadyThere, `unexpected ${pm.response.code}: ${pm.response.text()}`).to.be.true;",
+                  "});",
+                  "if (created) {",
+                  "  pm.collectionVariables.set('defaultAttributeConfigId', String(pm.response.json().id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Set custom attribute value",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": \"{{customAttributeValue}}\"\n}"
+            },
+            "url": {
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/reward_configuration/{{rewardConfigId}}/custom-attribute/{{customAttributeName}}",
+              "host": [
+                "{{BO_baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "gateway",
+                "domain",
+                "{{domainId}}",
+                "reward_configuration",
+                "{{rewardConfigId}}",
+                "custom-attribute",
+                "{{customAttributeName}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('value was set', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.value).to.eql(pm.collectionVariables.get('customAttributeValue'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Get custom attributes (verify)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/reward_configuration/{{rewardConfigId}}/custom-attributes",
+              "host": [
+                "{{BO_baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "gateway",
+                "domain",
+                "{{domainId}}",
+                "reward_configuration",
+                "{{rewardConfigId}}",
+                "custom-attributes"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('contains the set value', () => {",
+                  "  const json = pm.response.json();",
+                  "  const name = pm.collectionVariables.get('customAttributeName');",
+                  "  const value = pm.collectionVariables.get('customAttributeValue');",
+                  "  const found = json.some(ca => ca.name === name && ca.value === value);",
+                  "  pm.expect(found).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7. Offer the bonus to the player",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"playerId\": {{playerId}},\n  \"message\": \"CLS-1746-CLS-2008 test offer\"\n}"
+            },
+            "url": {
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/reward/bonus/{{rewardConfigId}}/offer",
+              "host": [
+                "{{BO_baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "gateway",
+                "domain",
+                "{{domainId}}",
+                "reward",
+                "bonus",
+                "{{rewardConfigId}}",
+                "offer"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('bonus offered', () => pm.expect(pm.response.json().status).to.eql('offered'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Gateway (player)",
+      "item": [
+        {
+          "name": "8. Player Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"player\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"client_id\": \"{{oauth_client_id}}\",\n  \"client_secret\": \"{{oauth_client_secret}}\",\n  \"deviceInformation\": {\"ip\": \"127.0.0.1\", \"userAgent\": \"Mozilla/5.0\"}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/oauth/2.0/token",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "oauth",
+                "2.0",
+                "token"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9. List reward bonuses (customAttributes shows up)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reward/bonuses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reward",
+                "bonuses"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('bonus has customAttributes with the set value', () => {",
+                  "  const json = pm.response.json();",
+                  "  const name = pm.collectionVariables.get('customAttributeName');",
+                  "  const value = pm.collectionVariables.get('customAttributeValue');",
+                  "  const bonus = json.bonus.find(b => String(b.id).startsWith(pm.collectionVariables.get('rewardConfigId') + '_'));",
+                  "  pm.expect(bonus, 'bonus not found in list').to.exist;",
+                  "  const found = (bonus.customAttributes || []).some(ca => ca.name === name && ca.value === value);",
+                  "  pm.expect(found).to.be.true;",
+                  "});",
+                  "pm.test('bonus falls back to the configured default for an attribute with no explicit value', () => {",
+                  "  const json = pm.response.json();",
+                  "  const defaultName = pm.collectionVariables.get('defaultAttributeName');",
+                  "  const defaultValue = pm.collectionVariables.get('defaultAttributeValue');",
+                  "  const bonus = json.bonus.find(b => String(b.id).startsWith(pm.collectionVariables.get('rewardConfigId') + '_'));",
+                  "  const attribute = (bonus.customAttributes || []).find(ca => ca.name === defaultName);",
+                  "  pm.expect(attribute, 'default attribute not present in customAttributes').to.exist;",
+                  "  pm.expect(attribute.value).to.eql(defaultValue);",
+                  "  pm.expect(attribute.id).to.be.null;",
+                  "  pm.expect(attribute.createdAt).to.be.null;",
+                  "  pm.expect(attribute.updatedAt).to.be.null;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10. Filter reward bonuses by custom attribute (matching)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reward/bonuses?customAttributes[]={{customAttributeName}}:{{customAttributeValue}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reward",
+                "bonuses"
+              ],
+              "query": [
+                {
+                  "key": "customAttributes[]",
+                  "value": "{{customAttributeName}}:{{customAttributeValue}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('returns the matching bonus', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.bonus).to.be.an('array').that.is.not.empty;",
+                  "  const found = json.bonus.some(b => String(b.id).startsWith(pm.collectionVariables.get('rewardConfigId') + '_'));",
+                  "  pm.expect(found).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11. Filter reward bonuses by custom attribute (no match)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reward/bonuses?customAttributes[]={{customAttributeName}}:silver",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reward",
+                "bonuses"
+              ],
+              "query": [
+                {
+                  "key": "customAttributes[]",
+                  "value": "{{customAttributeName}}:silver"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('no bonus matches an unmatched attribute value', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.bonus).to.be.an('array').that.is.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Gateway (player) - legacy /bonuses, flag move_bonus_to_promotion ON",
+      "item": [
+        {
+          "name": "13. List legacy bonuses (customAttributes shows up)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bonuses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bonuses"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('bonus has customAttributes with the set value', () => {",
+                  "  const json = pm.response.json();",
+                  "  const name = pm.collectionVariables.get('customAttributeName');",
+                  "  const value = pm.collectionVariables.get('customAttributeValue');",
+                  "  const bonus = json.bonus.find(b => String(b.id).startsWith(pm.collectionVariables.get('rewardConfigId') + '_'));",
+                  "  pm.expect(bonus, 'bonus not found in legacy list').to.exist;",
+                  "  const found = (bonus.customAttributes || []).some(ca => ca.name === name && ca.value === value);",
+                  "  pm.expect(found).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14. Filter legacy bonuses by custom attribute (matching)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bonuses?customAttributes[]={{customAttributeName}}:{{customAttributeValue}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bonuses"
+              ],
+              "query": [
+                {
+                  "key": "customAttributes[]",
+                  "value": "{{customAttributeName}}:{{customAttributeValue}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('returns the matching bonus', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.bonus).to.be.an('array').that.is.not.empty;",
+                  "  const found = json.bonus.some(b => String(b.id).startsWith(pm.collectionVariables.get('rewardConfigId') + '_'));",
+                  "  pm.expect(found).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "15. Filter legacy bonuses by custom attribute (no match)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bonuses?customAttributes[]={{customAttributeName}}:silver",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bonuses"
+              ],
+              "query": [
+                {
+                  "key": "customAttributes[]",
+                  "value": "{{customAttributeName}}:silver"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('no bonus matches an unmatched attribute value', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.bonus).to.be.an('array').that.is.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16. Filter legacy bonuses by an attribute served by its default value",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bonuses?customAttributes[]={{defaultAttributeName}}:{{defaultAttributeValue}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bonuses"
+              ],
+              "query": [
+                {
+                  "key": "customAttributes[]",
+                  "value": "{{defaultAttributeName}}:{{defaultAttributeValue}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('the filter matches a value that comes from the configured default', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.bonus).to.be.an('array').that.is.not.empty;",
+                  "  const found = json.bonus.some(b => String(b.id).startsWith(pm.collectionVariables.get('rewardConfigId') + '_'));",
+                  "  pm.expect(found, 'a bonus whose attribute value comes from the default must still be filterable').to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

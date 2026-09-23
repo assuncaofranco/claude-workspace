@@ -1,0 +1,173 @@
+{
+  "info": {
+    "name": "CLS-1186 preprod-1 — potentialWinnings (player 282577)",
+    "description": "Read-only probe: does rewarding[].potentialWinnings reach the Backoffice for this player? Entry point is Backoffice only; BO /bets is a pass-through of celesta-sportsbetting, which calls celesta-promotion /rewarding.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. BO oauth token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('token 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set('BO_access_token', body.access_token);",
+              "console.log('token obtido, expira em', body.expires_in, 's');"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+        },
+        "url": {
+          "raw": "{{BO_baseUrl}}/oauth/2.0/token",
+          "host": [
+            "{{BO_baseUrl}}"
+          ],
+          "path": [
+            "oauth",
+            "2.0",
+            "token"
+          ]
+        }
+      }
+    },
+    {
+      "name": "2. BO player bets (rewarding + potentialWinnings)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('bets 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "const bets = body.data || [];",
+              "console.log('total de apostas retornadas:', bets.length, '| total no player:', body.total);",
+              "",
+              "let comRewarding = 0, comPW = 0, pwObjeto = 0, pwNulo = 0;",
+              "bets.forEach((b) => {",
+              "  const rw = b.rewarding;",
+              "  if (rw === null || rw === undefined) { return; }",
+              "  comRewarding++;",
+              "  console.log('--- bet', b.id, '| status', b.status, '| amount', b.amount, '| bet.potentialWinnings(string SB) =', JSON.stringify(b.potentialWinnings));",
+              "  console.log('    rewarding e array?', Array.isArray(rw), '| entradas:', Array.isArray(rw) ? rw.length : 'n/a');",
+              "  const entradas = Array.isArray(rw) ? rw : [rw];",
+              "  entradas.forEach((e, i) => {",
+              "    const temChave = Object.prototype.hasOwnProperty.call(e, 'potentialWinnings');",
+              "    if (temChave) { comPW++; }",
+              "    if (temChave && e.potentialWinnings === null) { pwNulo++; }",
+              "    if (temChave && e.potentialWinnings && typeof e.potentialWinnings === 'object') { pwObjeto++; }",
+              "    console.log('    [' + i + '] promotionConfigurationId=' + e.promotionConfigurationId,",
+              "      '| rewards=' + JSON.stringify(e.rewards),",
+              "      '| chave potentialWinnings presente?', temChave,",
+              "      '| valor=', JSON.stringify(e.potentialWinnings));",
+              "  });",
+              "});",
+              "",
+              "console.log('=== RESUMO ===');",
+              "console.log('apostas com rewarding nao-nulo:', comRewarding);",
+              "console.log('entradas com a chave potentialWinnings:', comPW);",
+              "console.log('   dessas, objeto {real,bonus}:', pwObjeto, '| null (promocao ja recompensada):', pwNulo);",
+              "pm.collectionVariables.set('res_comRewarding', String(comRewarding));",
+              "pm.collectionVariables.set('res_comPW', String(comPW));",
+              "pm.collectionVariables.set('res_pwObjeto', String(pwObjeto));",
+              "",
+              "pm.test('alguma aposta do player esta ligada a promocao (rewarding nao-nulo)', () => {",
+              "  pm.expect(comRewarding, 'apostas com rewarding').to.be.above(0);",
+              "});",
+              "pm.test('a chave potentialWinnings existe nas entradas de rewarding', () => {",
+              "  pm.expect(comPW, 'entradas com a chave').to.be.above(0);",
+              "});",
+              "pm.test('potentialWinnings vem como objeto {real,bonus} em pelo menos uma entrada', () => {",
+              "  pm.expect(pwObjeto, 'entradas com objeto').to.be.above(0);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{BO_access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domain_id}}/player/{{player_id}}/bets?limit=50&offset=0",
+          "host": [
+            "{{BO_baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "gateway",
+            "domain",
+            "{{domain_id}}",
+            "player",
+            "{{player_id}}",
+            "bets"
+          ],
+          "query": [
+            {
+              "key": "limit",
+              "value": "50"
+            },
+            {
+              "key": "offset",
+              "value": "0"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "BO_baseUrl",
+      "value": "https://backend-api.preprod-1.octopodev.com"
+    },
+    {
+      "key": "BO_oauth_client_id",
+      "value": ""
+    },
+    {
+      "key": "BO_oauth_client_secret",
+      "value": ""
+    },
+    {
+      "key": "BO_username",
+      "value": ""
+    },
+    {
+      "key": "BO_password",
+      "value": ""
+    },
+    {
+      "key": "domain_id",
+      "value": "56"
+    },
+    {
+      "key": "player_id",
+      "value": "282577"
+    },
+    {
+      "key": "BO_access_token",
+      "value": ""
+    }
+  ]
+}

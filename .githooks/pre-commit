@@ -1,0 +1,69 @@
+#!/bin/bash
+# Bloqueia o commit se algum segredo conhecido aparecer no conteúdo staged.
+# Roda contra o diff staged, não contra o working tree: o que importa é o que
+# vai entrar no histórico, porque de lá não sai sem reescrevê-lo.
+#
+# Instalado por bootstrap.sh via `git config core.hooksPath .githooks`.
+
+set -uo pipefail
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$STAGED" ] && exit 0
+
+FOUND=0
+report() {
+  if [ "$FOUND" -eq 0 ]; then
+    echo "COMMIT BLOQUEADO — padrão de segredo no conteúdo staged:" >&2
+    echo >&2
+    FOUND=1
+  fi
+  printf '  %-28s %s\n' "$1" "$2" >&2
+}
+
+# Cada entrada: rótulo|regex ERE.
+#
+# Só CREDENCIAL. Id de conta AWS, hostname interno, e-mail de colega e link de
+# Slack ficam DE FORA de propósito: esse conteúdo é versionado aqui por decisão,
+# e um hook que dispara em todo commit é um hook que vira `--no-verify`.
+# A fronteira é "isto autentica alguém?", não "isto é interno?".
+#
+# Os literais que já vazaram não aparecem aqui — a forma os cobre sem republicá-los.
+PATTERNS=(
+  'OAuth client secret|client_?secret[^a-z]{0,4}[=:"[:space:]]+[0-9a-f]{32,}'
+  'blob hex de 64+|[^0-9a-f][0-9a-f]{64,}[^0-9a-f]'
+  'GUARD_KEY com valor|GUARD_KEY[[:space:]]*[=:][[:space:]]*["'"'"']?[^[:space:]"'"'"'{]'
+  'senha literal|(password|passwd|senha|pwd)[[:space:]]*[=:][[:space:]]*["'"'"']?[^<[:space:]"'"'"'{)]{6,}'
+  'chave privada|-----BEGIN [A-Z ]*PRIVATE KEY-----'
+  'URL pré-assinada AWS|X-Amz-(Signature|Credential|Security-Token)='
+  'credencial de provider|(api_token|api_password|api_login|hmac_secret_key|wallet_auth_password|casino_key|state_api_token|webhook_auth_token|cashiertoken)[[:space:]]*[=:][[:space:]]*["'"'"']?[^[:space:]"'"'"'{,}]{6,}'
+  'token bearer/gh|(gh[pousr]_[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16})'
+)
+
+for file in $STAGED; do
+  # Só texto; binário não é onde o problema mora e explode a regex.
+  git show ":$file" 2>/dev/null | grep -Iq . || continue
+  content=$(git show ":$file" 2>/dev/null)
+  for entry in "${PATTERNS[@]}"; do
+    label="${entry%%|*}"
+    regex="${entry#*|}"
+    # -e é obrigatório: um padrão que começa com '-' (a chave privada) vira opção sem ele.
+    if line=$(printf '%s' "$content" | grep -nE -e "$regex" | head -1); then
+      report "$label" "$file:${line%%:*}"
+    fi
+  done
+done
+
+if [ "$FOUND" -eq 1 ]; then
+  cat >&2 <<'EOF'
+
+O valor deve ir para ~/.claude-secrets/ e ser referenciado por caminho absoluto.
+Se for falso positivo (um id de exemplo, um IP de documentação), use:
+
+    git commit --no-verify
+
+...mas só depois de olhar a linha apontada acima.
+EOF
+  exit 1
+fi
+
+exit 0

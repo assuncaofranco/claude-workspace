@@ -1,0 +1,27 @@
+# Memory Index
+
+- [Celesta Infra Context](project_infra_context.md) — 12 infra repos, environments, AWS accounts by empresa (Celesta/SB) and by ambiente — canonical tables, verified 2026-09-09
+- [Terraform Provider vs S3 ACL](reference_terraform_provider_s3_acl.md) — bucket importado mostra diff fantasma de acl em provider < 4.0; contorno em uso e por que subir o provider talvez resolva em uma linha
+- [AWS Connection Mechanics](reference_aws_connection.md) — read before running any aws/terraform command: awsmfa, profile quirks, why credential_process is off
+- [Explanation Length Feedback](feedback_explanation_length.md) — answer in 3-5 lines, conclusion first; long descriptive walkthroughs get rejected
+- [Explanation Method](feedback_explanation_method.md) — separar realidade/registro/intenção, mecanismo antes da conclusão, nunca afirmar sem comando atrás
+- [Explanation Structure](feedback_explanation_structure.md) — Objetivo / Premissas / Inferência (a bota): explicação não pode só estar correta, precisa estar direcionada — o objetivo é o filtro; skill `/explain`
+- [English for Everything Outward](feedback_language_english_outward.md) — conversa entre nós em PT; PR, commit, ticket, Slack e código sempre em inglês
+- [Narrate Commands](feedback_narrate_commands.md) — sempre mostrar o comando junto da explicação, uma linha por comando
+- [Teaching Style Feedback](feedback_teaching_style.md) — explain infra concretely/physically, needs-before-tools, short spaced paragraphs, no jargon unless asked
+- [Freelens Reference](reference_freelens.md) — Lucas's K8s GUI for visualizing nodes/pods/namespaces/workloads live
+- [Audit Documentation Style](feedback_audit_documentation_style.md) — tables not prose, no AI-flavored connective sentences, verify every claim live, flag disguised decisions
+- [CEL-8469 lrgi-terraform Audit](project_cel8469_lrgi_terraform_audit.md) — CEL-8732 done; CEL-8733 code+imports done for iam/ and backend/, both plans clean, no apply run yet; shared module bug fixed+merged; CEL-8719 pending
+- [Legacy Terraform Coverage Gap](project_legacy_terraform_coverage.md) — celesta-ops holds legacy per-service .tf files; "no ASG found" ≠ "not on EC2" (see correction)
+- [Service Compute Location](project_service_compute_location.md) — per-service EC2(quanta-aws) vs k8s table for casino/SB prod, verified live 2026-09-09; memberzone=old name for crm
+- [vibrez-terraform Docker Workaround](reference_vibrez_terraform_docker.md) — arm64 can't run this repo's terraform natively (template provider gap); container recipe + no-CI gotcha
+- [CEL-9206 Vibrez RDS Resize](project_cel9206_vibrez_rds_resize.md) — merged+applied attempt failed (Performance Insights); B/G cleaned up; CEL-9206-2 ready, awaiting team decision
+- [Jenkins Orphan Jobs](reference_jenkins_orphan_jobs.md) — Jenkins é UMA EC2 no celesta-infra (via SSM, não é k8s); dois tipos de job órfão e como distinguir antes de agir
+- [Preprod Cluster Access](reference_preprod_cluster_access.md) — preprod-1..4 são namespaces de UM cluster (`celesta-preprod-cluster`); os contextos kubectl celesta-preprod-2/3/4 são quebrados
+- [CEL-9174 Apply Dress Rehearsal](project_cel9174_apply_dress_rehearsal.md) — primeiro apply automático: merge do #51 com TERRAFORM_APPLY_ENABLED=false ensaia a corrente com o plano real, sem tocar na AWS
+- [CEL-8734 Drift Schedule Check](project_cel8734_drift_schedule_check.md) — PERGUNTAR ao Lucas a partir de 2026-09-17 se o cron do drift rodou; cron só existe após o merge do PR #50
+- [Terraform CI Pitfalls](reference_terraform_ci_pitfalls.md) — 4 defeitos que só aparecem rodando: precedência de credencial (backend certo, provider na conta errada), `git config --add`, formas de source de módulo, nomes de ação IAM
+- [Terraform Import Window](reference_terraform_import_window.md) — import escreve no state compartilhado: até o código chegar na master, um plan da master pede destroy; escala mal para o CEL-8720
+- [Terraform Drift Gate: -refresh-only](reference_terraform_drift_gate_refresh_only.md) — um gate antes do apply precisa de `-refresh-only`; plan normal sai 2 pela própria mudança e bloqueia todo merge
+- [RDS Blue/Green Lessons](project_rds_bluegreen_lessons.md) — generic: Performance Insights vs t4g.small/micro, orphaned B/G cleanup steps, -target discipline, don't trust revert commit messages
+- [Terraform Module Uniform Defaults](reference_terraform_module_uniform_defaults.md) — reusing a shared module's for_each/uniform args for found-live resources isn't reflection; check every member's live values first (caught 7 real mismatches in CEL-8720)

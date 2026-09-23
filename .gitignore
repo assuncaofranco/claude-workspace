@@ -1,0 +1,20 @@
+# Nada de segredo mora neste repositório — ele vive em ~/.claude-secrets/, fora
+# da árvore do git, justamente para que um erro aqui não possa vazar nada.
+# Estas entradas são a segunda rede, não a primeira.
+
+*.pem
+*.key
+*.p12
+.env
+.env.*
+!.env.example
+secrets/
+local/
+*.secret.*
+
+# Snapshot de settings pode trazer caminho de máquina; o arquivo versionado é
+# gerado por `make snapshot`, o resto do diretório não entra.
+celesta-microservices/settings/*.local.json
+
+.DS_Store
+*.swp

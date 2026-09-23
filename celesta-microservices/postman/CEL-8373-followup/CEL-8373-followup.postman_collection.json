@@ -1,0 +1,268 @@
+{
+  "info": {
+    "name": "CEL-8373-followup — Missing change-password confirmation email (local repro)",
+    "description": "Reproduces (and later verifies the fix for): grant_type=change_password on the gateway, proxied to celesta-auth, never dispatches the change_password_confirmation TransactionalEmailJob. Run against a local docker-compose.dev.yml stack (celesta-gateway, celesta-auth, celesta-crm, celesta-backoffice, celesta-contact, all on master). Import with No environment — dev defaults are baked in as collection variables. Steps 4-5 (drain the SQS queue, verify email_history) are NOT in this collection — Postman/Newman is HTTP-only and can't run docker exec or read SQS directly. See the .md for those two manual steps.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:93",
+      "type": "string"
+    },
+    {
+      "key": "client_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "client_secret",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "playerEmail",
+      "value": "casino+casino@gmail.com",
+      "type": "string"
+    },
+    {
+      "key": "resetToken",
+      "value": "TEST_TOKEN",
+      "type": "string"
+    },
+    {
+      "key": "newPassword",
+      "value": "NewPassw0rd!Repro1",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "player_access_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1 - Application Auth",
+      "item": [
+        {
+          "name": "Get application token (client_credentials)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "client_credentials",
+                  "type": "text"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{client_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "{{client_secret}}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/oauth/2.0/token",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "oauth",
+                "2.0",
+                "token"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.test('Response has access_token', function () {",
+                  "    pm.expect(json.access_token).to.be.a('string');",
+                  "});",
+                  "pm.collectionVariables.set('access_token', json.access_token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 - Forgot Password (real trigger)",
+      "item": [
+        {
+          "name": "POST /forgot-password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "email",
+                  "value": "{{playerEmail}}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/forgot-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "forgot-password"
+              ]
+            },
+            "description": "Real entry point a player uses to request a reset. This DOES regenerate li_customer.temporary_password_token server-side (confirmed empirically) to a random value we have no HTTP way to read back. Folder 3 therefore still uses {{resetToken}} (the known dev fixture 'TEST_TOKEN', reset via the manual SQL step in the how-to doc's Setup) rather than whatever this call just generated — that's the only way to keep the collection self-contained and repeatable without a DB read. If you want to exercise the truly real token end-to-end once, read it manually after this request (SQL in the .md) and paste it into the resetToken variable before running folder 3."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 - Change Password (the call that should send the confirmation email)",
+      "item": [
+        {
+          "name": "POST /oauth/2.0/token grant_type=change_password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "change_password",
+                  "type": "text"
+                },
+                {
+                  "key": "token",
+                  "value": "{{resetToken}}",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "{{newPassword}}",
+                  "type": "text"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{client_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "{{client_secret}}",
+                  "type": "text"
+                },
+                {
+                  "key": "deviceInformation[ip]",
+                  "value": "127.0.0.1",
+                  "type": "text"
+                },
+                {
+                  "key": "deviceInformation[userAgent]",
+                  "value": "Mozilla/5.0 postman-repro",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/oauth/2.0/token",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "oauth",
+                "2.0",
+                "token"
+              ]
+            },
+            "description": "Real repro of the ticket: gateway proxies this to celesta-auth (internal/grant/change_password.go). That handler issues the token fine but never dispatches the TransactionalEmailJob the CEL-8373 plan required. This request always succeeds (200) — the bug is invisible here. Steps 4-5 in the how-to doc (drain the queue, check email_history) are what actually show it."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.test('Response has access_token', function () {",
+                  "    pm.expect(json.access_token).to.be.a('string');",
+                  "});",
+                  "pm.collectionVariables.set('player_access_token', json.access_token);",
+                  "try {",
+                  "    const payloadB64 = json.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');",
+                  "    const payload = JSON.parse(atob(payloadB64));",
+                  "    console.log('Issued token grant_type:', payload.grant_type);",
+                  "    pm.test('Token grant_type is change_password', function () {",
+                  "        pm.expect(payload.grant_type).to.eql('change_password');",
+                  "    });",
+                  "} catch (e) {",
+                  "    console.log('Could not decode JWT payload:', e.message);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

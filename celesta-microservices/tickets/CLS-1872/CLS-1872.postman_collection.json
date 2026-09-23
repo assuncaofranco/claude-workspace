@@ -1,0 +1,820 @@
+{
+  "info": {
+    "name": "CLS-1872 — Game gateway connections (integration)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "End-to-end check of the CLS-1872 epic through Backoffice only: reading a domain's game connections with and without permission, creating, updating, and the two rejection paths."
+  },
+  "item": [
+    {
+      "name": "Backoffice — owner (full permissions)",
+      "item": [
+        {
+          "name": "1. Token — owner",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{BO_baseUrl}}/oauth/2.0/token",
+              "host": [
+                "{{BO_baseUrl}}/oauth/2.0/token"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. GET list — owner sees options",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers",
+              "host": [
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const items = pm.response.json();",
+                  "pm.test('is an array', () => pm.expect(items).to.be.an('array'));",
+                  "pm.test('every item carries options', () => items.forEach(i => pm.expect(i).to.have.property('options')));",
+                  "pm.test('every item carries freeRoundsCancelable', () => items.forEach(i => pm.expect(i.freeRoundsCancelable).to.be.a('boolean')));",
+                  "pm.collectionVariables.set('initialCount', items.length);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. POST create connection",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers",
+              "host": [
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"{{gatewayType}}\",\n  \"name\": \"{{connectionName}}\",\n  \"enabled\": true,\n  \"freeRoundsCancelable\": true,\n  \"options\": {\n    \"secret_key\": \"integration-secret\",\n    \"bonus_api_base_url\": \"https://alea.example/bonus\",\n    \"customer_api_base_url\": \"https://alea.example/customer\",\n    \"environment_credential\": \"integration-credential\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "const c = pm.response.json();",
+                  "pm.collectionVariables.set('connectionId', c.id);",
+                  "pm.test('returns the name sent', () => pm.expect(c.name).to.eql(pm.collectionVariables.get('connectionName')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. GET list — new connection present with its options",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers",
+              "host": [
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const items = pm.response.json();",
+                  "const id = Number(pm.collectionVariables.get('connectionId'));",
+                  "const created = items.find(i => i.id === id);",
+                  "pm.test('the created connection is listed', () => pm.expect(created).to.not.be.undefined);",
+                  "pm.test('options came back as sent', () => pm.expect(created.options.secret_key).to.eql('integration-secret'));",
+                  "pm.test('status is enabled', () => pm.expect(created.status).to.eql('enabled'));",
+                  "pm.test('list grew by one', () => pm.expect(items.length).to.eql(Number(pm.collectionVariables.get('initialCount')) + 1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. POST second connection of the same gateway type",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers",
+              "host": [
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"{{gatewayType}}\",\n  \"name\": \"{{connectionNameSecond}}\",\n  \"enabled\": true,\n  \"freeRoundsCancelable\": true,\n  \"options\": {\n    \"secret_key\": \"integration-secret\",\n    \"bonus_api_base_url\": \"https://alea.example/bonus\",\n    \"customer_api_base_url\": \"https://alea.example/customer\",\n    \"environment_credential\": \"integration-credential\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('secondConnectionId', pm.response.json().id);",
+                  "pm.test('a different connection', () => pm.expect(String(pm.response.json().id)).to.not.eql(String(pm.collectionVariables.get('connectionId'))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. PUT update — rename, disable, rotate credential",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers/{{connectionId}}",
+              "host": [
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers/{{connectionId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{connectionNameRenamed}}\",\n  \"enabled\": false,\n  \"freeRoundsCancelable\": false,\n  \"options\": {\n    \"secret_key\": \"rotated-secret\",\n    \"bonus_api_base_url\": \"https://alea.example/bonus\",\n    \"customer_api_base_url\": \"https://alea.example/customer\",\n    \"environment_credential\": \"integration-credential\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7. GET list — the update is visible",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers",
+              "host": [
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const id = Number(pm.collectionVariables.get('connectionId'));",
+                  "const c = pm.response.json().find(i => i.id === id);",
+                  "pm.test('renamed', () => pm.expect(c.name).to.eql(pm.collectionVariables.get('connectionNameRenamed')));",
+                  "pm.test('disabled', () => pm.expect(c.status).to.eql('disabled'));",
+                  "pm.test('credential rotated', () => pm.expect(c.options.secret_key).to.eql('rotated-secret'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8. PUT with options that are not an object — rejected",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers/{{connectionId}}",
+              "host": [
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers/{{connectionId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Should not be saved\",\n  \"enabled\": true,\n  \"freeRoundsCancelable\": true,\n  \"options\": \"not-an-object\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9. GET list — the rejected update changed nothing",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers",
+              "host": [
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const id = Number(pm.collectionVariables.get('connectionId'));",
+                  "const c = pm.response.json().find(i => i.id === id);",
+                  "pm.test('name untouched', () => pm.expect(c.name).to.eql(pm.collectionVariables.get('connectionNameRenamed')));",
+                  "pm.test('still disabled', () => pm.expect(c.status).to.eql('disabled'));",
+                  "pm.test('credential untouched', () => pm.expect(c.options.secret_key).to.eql('rotated-secret'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10. PUT trying to change the gateway type — rejected",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers/{{connectionId}}",
+              "host": [
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers/{{connectionId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{connectionNameRenamed}}\",\n  \"enabled\": false,\n  \"freeRoundsCancelable\": false,\n  \"type\": \"gateway_type_quanta\",\n  \"options\": {\n    \"secret_key\": \"rotated-secret\",\n    \"bonus_api_base_url\": \"https://alea.example/bonus\",\n    \"customer_api_base_url\": \"https://alea.example/customer\",\n    \"environment_credential\": \"integration-credential\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11. POST a name another connection already uses — rejected",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers",
+              "host": [
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"gateway_type_aleaplay\",\n  \"name\": \"{{connectionNameRenamed}}\",\n  \"enabled\": true,\n  \"freeRoundsCancelable\": true,\n  \"options\": {\n    \"secret_key\": \"rotated-secret\",\n    \"bonus_api_base_url\": \"https://alea.example/bonus\",\n    \"customer_api_base_url\": \"https://alea.example/customer\",\n    \"environment_credential\": \"integration-credential\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400, not 500', () => pm.response.to.have.status(400));",
+                  "const e = pm.response.json();",
+                  "pm.test('the error is on the name field', () => pm.expect(e).to.have.property('name'));",
+                  "pm.test('no raw SQL reaches the operator', () => pm.expect(pm.response.text()).to.not.include('SQLSTATE'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12. PUT with enabled null — rejected, and the connection stays enabled",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers/{{connectionId}}",
+              "host": [
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers/{{connectionId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{connectionNameRenamed}}\",\n  \"enabled\": null,\n  \"freeRoundsCancelable\": true,\n  \"options\": {\n    \"secret_key\": \"rotated-secret\",\n    \"bonus_api_base_url\": \"https://alea.example/bonus\",\n    \"customer_api_base_url\": \"https://alea.example/customer\",\n    \"environment_credential\": \"integration-credential\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));",
+                  "pm.test('the error names enabled', () => pm.expect(pm.response.json()).to.have.property('enabled'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "13. PUT without the booleans — both are named in one response",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers/{{connectionId}}",
+              "host": [
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers/{{connectionId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{connectionNameRenamed}}\",\n  \"options\": {\n    \"secret_key\": \"rotated-secret\",\n    \"bonus_api_base_url\": \"https://alea.example/bonus\",\n    \"customer_api_base_url\": \"https://alea.example/customer\",\n    \"environment_credential\": \"integration-credential\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));",
+                  "const e = pm.response.json();",
+                  "pm.test('enabled is named', () => pm.expect(e).to.have.property('enabled'));",
+                  "pm.test('freeRoundsCancelable is named too, not on a second attempt', () => pm.expect(e).to.have.property('freeRoundsCancelable'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14. GET list — the three rejections changed nothing",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers",
+              "host": [
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const c = pm.response.json().find(x => x.id === Number(pm.collectionVariables.get('connectionId')));",
+                  "pm.test('still disabled from step 6', () => pm.expect(c.status).to.eql('disabled'));",
+                  "pm.test('name untouched', () => pm.expect(c.name).to.eql(pm.collectionVariables.get('connectionNameRenamed')));",
+                  "pm.test('empty options serialise as an object, never as []', () => {",
+                  "    const anyEmpty = pm.response.text().includes('\"options\":[]');",
+                  "    pm.expect(anyEmpty, 'found \"options\":[] in the payload').to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Backoffice — customer support (no access)",
+      "item": [
+        {
+          "name": "15. Token — customer support (no integrations access)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{BO_baseUrl}}/oauth/2.0/token",
+              "host": [
+                "{{BO_baseUrl}}/oauth/2.0/token"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username_no_access}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('CS_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16. GET list — refused",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{CS_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers",
+              "host": [
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17. POST create — refused",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{CS_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers",
+              "host": [
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"{{gatewayType}}\",\n  \"name\": \"Should not be created\",\n  \"enabled\": true,\n  \"freeRoundsCancelable\": true,\n  \"options\": {\n    \"secret_key\": \"integration-secret\",\n    \"bonus_api_base_url\": \"https://alea.example/bonus\",\n    \"customer_api_base_url\": \"https://alea.example/customer\",\n    \"environment_credential\": \"integration-credential\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18. PUT update — refused",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{CS_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers/{{connectionId}}",
+              "host": [
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers/{{connectionId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Should not be saved\",\n  \"enabled\": true,\n  \"freeRoundsCancelable\": true,\n  \"options\": {\n    \"secret_key\": \"rotated-secret\",\n    \"bonus_api_base_url\": \"https://alea.example/bonus\",\n    \"customer_api_base_url\": \"https://alea.example/customer\",\n    \"environment_credential\": \"integration-credential\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "19. GET list — owner confirms nothing was created or changed",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers",
+              "host": [
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const items = pm.response.json();",
+                  "pm.test('no connection named by the refused calls', () => pm.expect(items.some(i => i.name === 'Should not be created')).to.be.false);",
+                  "const id = Number(pm.collectionVariables.get('connectionId'));",
+                  "const c = items.find(i => i.id === id);",
+                  "pm.test('name still the one owner set', () => pm.expect(c.name).to.eql(pm.collectionVariables.get('connectionNameRenamed')));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "BO_baseUrl",
+      "value": "http://localhost:84"
+    },
+    {
+      "key": "BO_oauth_client_id",
+      "value": ""
+    },
+    {
+      "key": "BO_oauth_client_secret",
+      "value": ""
+    },
+    {
+      "key": "BO_username",
+      "value": ""
+    },
+    {
+      "key": "BO_username_no_access",
+      "value": "customerSupport@gmail.com"
+    },
+    {
+      "key": "BO_password",
+      "value": ""
+    },
+    {
+      "key": "domainId",
+      "value": "1"
+    },
+    {
+      "key": "gatewayType",
+      "value": "gateway_type_aleaplay"
+    },
+    {
+      "key": "BO_access_token",
+      "value": ""
+    },
+    {
+      "key": "CS_access_token",
+      "value": ""
+    },
+    {
+      "key": "connectionId",
+      "value": ""
+    },
+    {
+      "key": "secondConnectionId",
+      "value": ""
+    },
+    {
+      "key": "initialCount",
+      "value": ""
+    },
+    {
+      "key": "runTag",
+      "value": ""
+    },
+    {
+      "key": "connectionName",
+      "value": ""
+    },
+    {
+      "key": "connectionNameRenamed",
+      "value": ""
+    },
+    {
+      "key": "connectionNameSecond",
+      "value": ""
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.collectionVariables.get('runTag')) {",
+          "    pm.collectionVariables.set('runTag', String(Date.now()).slice(-6));",
+          "}",
+          "pm.collectionVariables.set('connectionName', 'Integration AleaPlay ' + pm.collectionVariables.get('runTag'));",
+          "pm.collectionVariables.set('connectionNameRenamed', pm.collectionVariables.get('connectionName') + ' renamed');",
+          "pm.collectionVariables.set('connectionNameSecond', pm.collectionVariables.get('connectionName') + ' second');"
+        ]
+      }
+    }
+  ]
+}

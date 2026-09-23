@@ -10,6 +10,8 @@ O fluxo de ticket em si não é memória: são as skills em `global/skills/` (`t
 cadeia. O roteamento por atribuição (dev/review/teste → quais skills encadear) está em
 `global/CLAUDE.md`.
 
+- [Repositório claude-workspace](claude-workspace-repo.md) — onde skills, memória e padrões moram
+  desde 2026-09-23, por que a divisão é por dono, e por que credencial fica fora da árvore do git
 - [Preferências](preferences.md) — comunicação terse/humana, opinião genuína em vez de carimbo,
   disciplina de review (verificar estado real do git, sinalizar marcas de IA) e citar o caminho do
   arquivo de padrões quando um review o invoca

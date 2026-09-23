@@ -4,6 +4,7 @@ Root only holds global/generic stuff. Ticket-specific status lives in `tasks/<ti
 
 Ticket workflow itself is not memory — it's the skills in `~/.claude/commands/`: `ticket-understand`, `ticket-matrix` (added 2026-09-21), `ticket-test`, `ticket-code`, `ticket-review`, `preprod-test`, `db-query` (plus the pre-existing `ticket-postman`). Production alerts have their own skill, `oncall`, which is deliberately *not* part of that chain. Attribution routing (dev/review/test → which skills to chain) lives in `~/.claude/CLAUDE.md`.
 
+- [Repositório claude-workspace](../../global/memory/claude-workspace-repo.md) — desde 2026-09-23 skills/memória/padrões são versionados; specifics da Celesta em `context.yaml`, `db-reference.md`, `postman-reference.md`, `constants-backlog.md`; credencial em `~/.claude-secrets/`, fora do git
 - [Preferences](preferences.md) — terse/human communication, genuine opinions over rubber-stamping, review discipline (verify live git state, flag AI-tells), and (added 2026-08-31) cite coding-standards.md's path when a review names it
 - [CLS-1285-CLS-2391 fix](tasks/project_cls1285_cls2391_status_set_at_fix.md) — implicit Doctrine listener-ordering bug pattern (celesta-wallet), and the correct `dev-{branch}` composer pattern for an unreleased job-library change
 - [CLS-1285-CLS-2391 review decisions](tasks/project_cls1285_cls2391_review_decisions.md) — pending: apply Copilot's null-guard on 3 promotion handlers; composer dev-branch stays until PO approves

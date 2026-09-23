@@ -51,4 +51,4 @@ Quem olhar o primeiro conclui "não está retornando objeto" com tudo funcionand
 
 ## Onde fica a collection
 
-`~/Desktop/celesta-projects/_local-postman-collections/CLS-1186-preprod-potential-winnings/` (`chmod 600`). Credenciais de preprod **nunca** num repo de serviço — ver [[feedback_local_postman_collections_folder]]. Newman em `~/.npm-global/bin/newman` (não está no PATH).
+`~/Desktop/celesta-projects/claude-workspace/celesta-microservices/postman/CLS-1186-preprod-potential-winnings/` (`chmod 600`). Credenciais de preprod **nunca** num repo de serviço — ver [[feedback_local_postman_collections_folder]]. Newman em `~/.npm-global/bin/newman` (não está no PATH).

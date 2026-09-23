@@ -11,7 +11,7 @@ metadata:
 # CLS-1872 — especificidades para testar
 
 Reunido em 2026-09-22, depois do review do Fable e das correções. Complementa
-`~/Desktop/celesta-projects/tickets/CLS-1872/` (epic.md, integration-test-plan.md, CLS-1872.md,
+`~/Desktop/celesta-projects/claude-workspace/celesta-microservices/tickets/CLS-1872/` (epic.md, integration-test-plan.md, CLS-1872.md,
 CLS-1872.postman_collection.json).
 
 ## 1. Qual tipo de gateway usar, e por quê
@@ -143,7 +143,7 @@ Não apagada, para você decidir:
 ## 7. Como rodar a coleção
 
 ```
-newman run ~/Desktop/celesta-projects/tickets/CLS-1872/CLS-1872.postman_collection.json
+newman run ~/Desktop/celesta-projects/claude-workspace/celesta-microservices/tickets/CLS-1872/CLS-1872.postman_collection.json
 ```
 
 Sem environment — ela traz os defaults de dev. Último resultado (2026-09-22, dev, os dois repos em

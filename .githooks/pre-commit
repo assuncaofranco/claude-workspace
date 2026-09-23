@@ -40,6 +40,11 @@ PATTERNS=(
 )
 
 for file in $STAGED; do
+  # Os arquivos do próprio scanner carregam os padrões e casariam consigo mesmos.
+  case "$file" in
+    Makefile|.githooks/pre-commit|global/scripts/portable-check.py) continue ;;
+  esac
+
   # Só texto; binário não é onde o problema mora e explode a regex.
   git show ":$file" 2>/dev/null | grep -Iq . || continue
   content=$(git show ":$file" 2>/dev/null)

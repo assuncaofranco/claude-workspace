@@ -1,6 +1,6 @@
 ---
 name: feedback-local-postman-collections-folder
-description: "Ad-hoc/no-ticket Postman collections go in ~/Desktop/celesta-projects/_local-postman-collections/<slug>/, not inside a service repo"
+description: "Ad-hoc/no-ticket Postman collections go in ~/Desktop/celesta-projects/claude-workspace/celesta-microservices/postman/<slug>/, not inside a service repo"
 metadata: 
   node_type: memory
   type: feedback
@@ -8,7 +8,7 @@ metadata:
   modified: 2026-09-02T09:54:40.066Z
 ---
 
-When building a Postman collection outside the formal ticket flow — e.g. reproducing a bug found mid-investigation, before any ticket exists — save it to `~/Desktop/celesta-projects/_local-postman-collections/<slug>/<slug>.postman_collection.json` + `<slug>.md`, not into any service's `sdd/_how_to_test/`.
+When building a Postman collection outside the formal ticket flow — e.g. reproducing a bug found mid-investigation, before any ticket exists — save it to `~/Desktop/celesta-projects/claude-workspace/celesta-microservices/postman/<slug>/<slug>.postman_collection.json` + `<slug>.md`, not into any service's `sdd/_how_to_test/`.
 
 **Why:** these collections aren't meant to be committed on a branch. Lucas asked (2026-09-02, during the CEL-8373-followup change-password-confirmation-email investigation) for a dedicated folder specifically so ad-hoc/local-only collections don't end up polluting a service repo or getting accidentally committed. `_local-postman-collections/` sits as a sibling to the service repos inside `~/Desktop/celesta-projects/`, outside every git repo, so nothing there can leak onto a branch by accident.
 

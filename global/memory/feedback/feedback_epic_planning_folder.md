@@ -1,6 +1,6 @@
 ---
 name: epic-planning-folder
-description: "Épico com várias subtasks ganha uma pasta de planejamento fora das branches, em ~/Desktop/celesta-projects/tickets/<épico>/, antes de qualquer /spec"
+description: "Épico com várias subtasks ganha uma pasta de planejamento fora das branches, em ~/Desktop/celesta-projects/claude-workspace/celesta-microservices/tickets/<épico>/, antes de qualquer /spec"
 metadata: 
   node_type: memory
   type: feedback
@@ -9,7 +9,7 @@ metadata:
 ---
 
 Antes de rodar `/spec` de qualquer subtask de um épico multi-ticket, montar o planejamento em
-`~/Desktop/celesta-projects/tickets/<épico>/`:
+`~/Desktop/celesta-projects/claude-workspace/celesta-microservices/tickets/<épico>/`:
 
 ```
 tickets/CLS-1872/

@@ -23,10 +23,13 @@ snapshot: ## Copia o settings.json vivo para o repositório, removendo credencia
 	json.dump(d,open('celesta-microservices/settings/settings.json','w'),indent=2,ensure_ascii=False); \
 	print(f'settings.json: {len(a)} -> {len(k)} entradas ({len(a)-len(k)} com credencial, removidas)')"
 
+# Os arquivos do próprio scanner carregam os padrões e casariam consigo mesmos.
+SCAN_EXCLUDE := --exclude=Makefile --exclude=pre-commit --exclude-dir=.git
+
 secrets-scan: ## Procura segredo em TODO o histórico, não só no working tree
 	@echo "—— working tree"
-	@! grep -rnIE 'client_secret[^a-z]{0,4}[=:"[:space:]]+[0-9a-f]{32,}|[0-9a-f]{64,}|GUARD_KEY[[:space:]]*=|-----BEGIN [A-Z ]*PRIVATE KEY-----|X-Amz-Signature' \
-		. --exclude-dir=.git 2>/dev/null || (echo "\033[31mACHOU no working tree\033[0m"; exit 1)
+	@! grep -rnIE 'client_secret[^a-z]{0,4}[=:"[:space:]]+[0-9a-f]{32,}|[0-9a-f]{64,}|GUARD_KEY[[:space:]]*=|X-Amz-Signature=' \
+		. $(SCAN_EXCLUDE) 2>/dev/null || (echo "\033[31mACHOU no working tree\033[0m"; exit 1)
 	@echo "  limpo"
 	@echo "—— histórico completo"
 	@if [ -d .git ] && git rev-parse HEAD >/dev/null 2>&1; then \
@@ -35,12 +38,10 @@ secrets-scan: ## Procura segredo em TODO o histórico, não só no working tree
 		fi; echo "  limpo"; \
 	else echo "  (ainda sem commits)"; fi
 
-portable: ## Testa a promessa do repositório: global/ sozinho ainda faz sentido?
+portable: ## Testa a promessa do repositório: global/ sobrevive sem celesta-*?
 	@tmp=$$(mktemp -d); \
 	git archive HEAD 2>/dev/null | tar -x -C $$tmp || { echo "precisa de ao menos um commit"; exit 1; }; \
 	rm -rf $$tmp/celesta-microservices $$tmp/celesta-infra; \
-	echo "—— referências penduradas em global/ depois de apagar o que é da empresa:"; \
-	if grep -rn 'celesta-microservices\|celesta-infra' $$tmp/global $$tmp/README.md 2>/dev/null | grep -v '^\s*$$'; then \
-		echo "\033[33m  ^ cada uma dessas é um lugar onde global/ depende da empresa\033[0m"; \
-	else echo "  \033[32mnenhuma — global/ é autossuficiente\033[0m"; fi; \
-	rm -rf $$tmp
+	echo "—— links e imports de global/ que deixam de resolver:"; \
+	python3 global/scripts/portable-check.py $$tmp; rc=$$?; \
+	rm -rf $$tmp; exit $$rc

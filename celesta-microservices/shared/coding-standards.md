@@ -67,6 +67,8 @@ montada no ambiente implantado, branches empilhadas. Ler as duas.
 Aqui fica só o que depende do esquema, das bibliotecas ou da infraestrutura da Celesta. Um item por
 lição, datado, com o porquê.
 
+- **2026-09-23 (review, CLS-1872, celesta-backoffice)** — descrição de atributo OpenAPI acima de 120 caracteres: **não** quebrar em strings concatenadas com `.` — isso troca o erro de `[Line length]` por `[Unnecessary string concat]`, que é igualmente um achado. Encurtar a frase; a explicação longa vai para o `_plans/`, que é onde a regra do projeto manda o racional morar. Cometido duas vezes no mesmo ticket.
+
 - **2026-09-22 (review, CLS-1872, celesta-backoffice)** — `policy` e `permission` são duas tabelas
   ligadas por `policy_permission`. A tela de Access control atribui **policies** a papéis; o portão do
   controller (`isGranted('ROLE_OAUTH2_<PERM>')`) lê **permissions**; e uma policy pode carregar

@@ -33,4 +33,4 @@ atribuição de IA em lugar nenhum (ver a regra em `~/.claude/CLAUDE.md`).
 deixam o PR tecnicamente mergeável sem que ninguém tenha lido. Vale mencionar uma vez se alguém for
 mergear antes do review do board — não vale insistir.
 
-Relacionado: [[cls1872-review-2026-09-22]], [[preferences]].
+Relacionado: [[cls1872-review-2026-09-22]], `global/rules/writing.md`.

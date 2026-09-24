@@ -56,5 +56,5 @@ job-library tag from the merged PR, bump wallet/promotion's constraint to that t
 
 ## Related durable lesson
 
-See [[feedback_review_product_impact_not_just_current_code]] — the general principle behind the correction
+See `global/rules/review-lens.md` — the general principle behind the correction
 above, worth applying to future PR-comment triage, not just this ticket.

@@ -16,7 +16,7 @@ CLS-375-CLS-1186 (celesta-promotion, PR #442, `potentialWinnings` no `/rewarding
 
 Correção (PO confirmou incluir pending): constante **separada** `PromotionEvent::IN_FLIGHT_EVENT_NAMES_BY_TYPE` (`bet → [bet_pending]`), e `findRewardingRows()` casa a união das duas. **Separada de propósito** — `REWARDING_EVENT_NAMES_BY_TYPE` também alimenta `findLatestByPromotionIds()`, que é o campo `event` de traceability do CLS-931; alargar no lugar faria aquele campo passar a apontar para eventos pending. Mortos (`rejected`/`failed`/`timeout`/`canceled`) ficam fora dos dois. Depósito não precisa de nome in-flight: a janela engaged dele abre no `deposit_success`, que já casa.
 
-**Lição generalizável:** quando um endpoint tem duas metades mutuamente exclusivas decididas por status (aqui `rewards` vs `potentialWinnings`), elas podem precisar de **conjuntos de eventos opostos** — a metade "já aconteceu" quer o evento terminal, a metade "vai acontecer" quer o evento em voo. Herdar o filtro de uma delas silencia a outra sem erro nenhum. Ver também [[feedback_review_product_impact_not_just_current_code]].
+**Lição generalizável:** quando um endpoint tem duas metades mutuamente exclusivas decididas por status (aqui `rewards` vs `potentialWinnings`), elas podem precisar de **conjuntos de eventos opostos** — a metade "já aconteceu" quer o evento terminal, a metade "vai acontecer" quer o evento em voo. Herdar o filtro de uma delas silencia a outra sem erro nenhum. Ver também `global/rules/review-lens.md`.
 
 **Como foi achado:** teste real no preprod-1 com Newman (player 282577, domínio **213 = Sportsbook**, não o 56 default), aposta #121 `pending` → BO devolveu `rewarding: []`. Ver [[project_cls1186_preprod_newman]].
 
@@ -58,4 +58,4 @@ Com a flag off, o campo `rewards` do `/rewarding` retorna **sempre `[]`** — ma
 
 ## Gotcha de processo
 
-Worktree isolado (`git worktree`) para não sujar o checkout principal **não tem `vendor/`** → o hook de pre-commit (phpinsights) não roda e os testes não rodam (o container monta o checkout principal). Symlinkar o vendor destrava o hook, mas `.gitignore` tem `/vendor/` com barra, que **não casa symlink** — o link entra no commit via `git add -A`. Aconteceu aqui, corrigido com `git rm --cached vendor` + `--amend`. Ver [[feedback_make_init_after_branch_switch]].
+Worktree isolado (`git worktree`) para não sujar o checkout principal **não tem `vendor/`** → o hook de pre-commit (phpinsights) não roda e os testes não rodam (o container monta o checkout principal). Symlinkar o vendor destrava o hook, mas `.gitignore` tem `/vendor/` com barra, que **não casa symlink** — o link entra no commit via `git add -A`. Aconteceu aqui, corrigido com `git rm --cached vendor` + `--amend`. Ver `global/rules/environment.md`.

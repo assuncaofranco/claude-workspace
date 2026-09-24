@@ -21,4 +21,4 @@ endureceu a captura em 2026-09-16 (cap de 1000 chars, merge dos maps, omissão d
 credencial). Levar a questão do body a ele como continuação do CEL-9270, não como erro dele.
 
 **How to apply:** ao citar autor de commit, usar nome completo do `git log --format=%an` e não inferir
-que "Lucas" = usuário. Relacionado: [[preferences]].
+que "Lucas" = usuário. Relacionado: `global/rules/writing.md`.

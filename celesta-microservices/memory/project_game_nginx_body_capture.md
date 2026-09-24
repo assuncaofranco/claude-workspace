@@ -36,4 +36,4 @@ mesmo numa conta pessoal — é o lugar errado para ele.
 
 **Why:** é ticket próprio e prioritário, não um detalhe do épico.
 **How to apply:** ver o arquivo no vault antes de qualquer conversa sobre deploy do CLS-1872.
-Relacionado: [[cls1872-review-2026-09-22]], [[feedback_never_fix_outside_ticket_scope]].
+Relacionado: [[cls1872-review-2026-09-22]], `global/rules/scope.md`.

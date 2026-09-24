@@ -18,4 +18,4 @@ Stated by Lucas on 2026-09-21, describing how the team's division of work change
 
 **How to apply:** this is the reason `ticket-matrix` exists and is mandatory (step 3 of the ticket workflow in `~/.claude/CLAUDE.md`), and the reason step 14 always asks about preprod. Concretely, the division of labour inside that step: Claude enumerates (mechanical, exhaustive, read out of `celesta-constants`/enums/DB — a model doesn't forget the fourth value); Lucas classifies affected/not-affected/equivalent (business judgement, the half that must NOT be accelerated). Every cell cites its source, because a plausible-looking invented matrix is the single most likely way a model reintroduces the exact failure the step exists to prevent.
 
-Related: [[preferences]], [[feedback_review_product_impact_not_just_current_code]].
+Related: `global/rules/writing.md`, `global/rules/review-lens.md`.

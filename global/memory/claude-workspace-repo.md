@@ -36,5 +36,4 @@ atribuição de IA. Em máquina nova, `./bootstrap.sh` — mas ele **não** recr
 que por definição nunca esteve no repositório. Onde cada specific da Celesta foi parar:
 `context.yaml`, `db-reference.md`, `postman-reference.md`, `constants-backlog.md`.
 
-Relacionado: [[preferences]], [[feedback_local_postman_collections_folder]],
-[[feedback_epic_planning_folder]].
+Relacionado: `global/router.md`, `global/rules/corpus.md`, `global/rules/secrets.md`.

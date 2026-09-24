@@ -46,4 +46,4 @@ Never filter `sub_balance` by `promotion_id` (unindexed). Safe indexed filters: 
 
 ## Status / next step
 
-Currently designing (in-chat, no doc per user's request — "não precisa criar o documento verboso de IA") a **local reproduction test plan** for both bugs before writing the fix, per user's explicit ask to test all plausible collision pairs (schedule×URL, cron×cron, URL×URL) rather than assume just one. See [[feedback_review_product_impact_not_just_current_code]] for the general review-lens habit that applies once a fix is proposed.
+Currently designing (in-chat, no doc per user's request — "não precisa criar o documento verboso de IA") a **local reproduction test plan** for both bugs before writing the fix, per user's explicit ask to test all plausible collision pairs (schedule×URL, cron×cron, URL×URL) rather than assume just one. See `global/rules/review-lens.md` for the general review-lens habit that applies once a fix is proposed.

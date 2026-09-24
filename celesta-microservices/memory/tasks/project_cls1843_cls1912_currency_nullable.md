@@ -34,4 +34,4 @@ Live-verified end to end: control player registered with currency → engaged (1
 
 Reported but not fixed (other tickets): pre-existing `offering_status cannot be null` when creating a reward configuration with the flag off (`SetOfferingStatusListener` returns early — CLS-1285-CLS-2228); `RewardConfigurationController::offerReward` is shielded by the Backoffice's own currency pre-check but was hardened anyway since any service can call it directly.
 
-Next: `ticket-review`, then commit/PR. See [[feedback_make_init_after_branch_switch]] for the dev-DB migration gotcha.
+Next: `ticket-review`, then commit/PR. See `global/rules/environment.md` for the dev-DB migration gotcha.

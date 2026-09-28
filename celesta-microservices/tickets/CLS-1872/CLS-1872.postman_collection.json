@@ -57,9 +57,9 @@
               }
             ],
             "url": {
-              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers",
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-providers",
               "host": [
-                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers"
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-providers"
               ]
             }
           },
@@ -95,9 +95,9 @@
               }
             ],
             "url": {
-              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers",
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-provider",
               "host": [
-                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers"
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-provider"
               ]
             },
             "body": {
@@ -135,9 +135,9 @@
               }
             ],
             "url": {
-              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers",
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-providers",
               "host": [
-                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers"
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-providers"
               ]
             }
           },
@@ -175,9 +175,9 @@
               }
             ],
             "url": {
-              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers",
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-provider",
               "host": [
-                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers"
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-provider"
               ]
             },
             "body": {
@@ -214,9 +214,9 @@
               }
             ],
             "url": {
-              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers/{{connectionId}}",
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-provider/{{connectionId}}",
               "host": [
-                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers/{{connectionId}}"
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-provider/{{connectionId}}"
               ]
             },
             "body": {
@@ -251,9 +251,9 @@
               }
             ],
             "url": {
-              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers",
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-providers",
               "host": [
-                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers"
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-providers"
               ]
             }
           },
@@ -289,9 +289,9 @@
               }
             ],
             "url": {
-              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers/{{connectionId}}",
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-provider/{{connectionId}}",
               "host": [
-                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers/{{connectionId}}"
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-provider/{{connectionId}}"
               ]
             },
             "body": {
@@ -326,9 +326,9 @@
               }
             ],
             "url": {
-              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers",
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-providers",
               "host": [
-                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers"
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-providers"
               ]
             }
           },
@@ -364,9 +364,9 @@
               }
             ],
             "url": {
-              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers/{{connectionId}}",
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-provider/{{connectionId}}",
               "host": [
-                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers/{{connectionId}}"
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-provider/{{connectionId}}"
               ]
             },
             "body": {
@@ -401,9 +401,9 @@
               }
             ],
             "url": {
-              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers",
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-provider",
               "host": [
-                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers"
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-provider"
               ]
             },
             "body": {
@@ -441,9 +441,9 @@
               }
             ],
             "url": {
-              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers/{{connectionId}}",
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-provider/{{connectionId}}",
               "host": [
-                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers/{{connectionId}}"
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-provider/{{connectionId}}"
               ]
             },
             "body": {
@@ -479,9 +479,9 @@
               }
             ],
             "url": {
-              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers/{{connectionId}}",
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-provider/{{connectionId}}",
               "host": [
-                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers/{{connectionId}}"
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-provider/{{connectionId}}"
               ]
             },
             "body": {
@@ -519,9 +519,9 @@
               }
             ],
             "url": {
-              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers",
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-providers",
               "host": [
-                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers"
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-providers"
               ]
             }
           },
@@ -598,9 +598,9 @@
               }
             ],
             "url": {
-              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers",
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-providers",
               "host": [
-                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers"
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-providers"
               ]
             }
           },
@@ -631,9 +631,9 @@
               }
             ],
             "url": {
-              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers",
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-provider",
               "host": [
-                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers"
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-provider"
               ]
             },
             "body": {
@@ -668,9 +668,9 @@
               }
             ],
             "url": {
-              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers/{{connectionId}}",
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-provider/{{connectionId}}",
               "host": [
-                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers/{{connectionId}}"
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-provider/{{connectionId}}"
               ]
             },
             "body": {
@@ -705,9 +705,9 @@
               }
             ],
             "url": {
-              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers",
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-providers",
               "host": [
-                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/integration/game-providers"
+                "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/game-providers"
               ]
             }
           },

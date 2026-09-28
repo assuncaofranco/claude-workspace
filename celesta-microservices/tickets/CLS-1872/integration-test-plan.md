@@ -100,7 +100,7 @@ de volta — não vale "funcionou".
 
 | # | Quem | Ação | Esperado |
 |---|---|---|---|
-| 1 | P0 | `GET .../integration/game-providers` | `403` |
+| 1 | P0 | `GET .../game/game-providers` | `403` |
 | 2 | P1 | idem | `200`, array; **nenhum item tem a chave `options`** |
 | 3 | P2 | idem | `200`; nenhum item tem `options` |
 | 4 | P3 | idem | `200`; **todo** item tem `options` preenchido |

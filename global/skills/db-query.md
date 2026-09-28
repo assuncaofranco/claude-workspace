@@ -1,5 +1,5 @@
 ---
-description: Query a service's database straight from its container — read-only, for discovering real ids and column names before building a test scenario, or verifying what a fix produced.
+description: Query a service's database straight from its container — reads by default, for discovering real ids and column names before building a test scenario, or verifying what a fix produced; writes only in local dev, to unblock the Newman run.
 allowed-tools: Bash(docker exec:*)
 ---
 
@@ -18,9 +18,25 @@ docker exec <container> php bin/console dbal:run-sql "<SELECT ...>"
 
 ## Rules
 
-- **Read-only. Never write through this.** If a scenario needs a row that doesn't exist, create it
-  through the real flow — API, a real event, or a console command; see `ticket-test`. This command is
-  for diagnosing what's missing and verifying what a fix produced, nothing else.
+- **Leitura é o padrão, e o fluxo real é a preferência.** Quando um cenário precisa de uma linha que
+  não existe, criá-la pelo caminho real — API, evento de verdade, comando de console; ver
+  `ticket-test`. O que se ganha com isso é o teste de integração: a coleção do Newman exercita as
+  rotas, os schemas e a cadeia entre serviços, e é ela que prova que a feature funciona ponta a ponta.
+  Escrever direto no banco pula exatamente essa prova.
+
+- **Exceção — desenvolvimento local, para destravar o Newman.** Em banco de dev, quando o fluxo real
+  não alcança o dado, a escrita direta é permitida. O objetivo dela é sempre **fazer a coleção rodar**,
+  nunca substituí-la: ajusta-se o mínimo, roda-se o Newman, e o resultado dele é que vale como
+  verificação. Preferência pelo fluxo real não é obstáculo para fazer o que é preciso.
+
+  Alteração mínima, uma linha quando der, com o antes e o depois no output. Nada disso vai para a
+  documentação do ticket nem para a branch: é ajuste de ambiente, não achado do épico.
+
+  **Por quê:** no CLS-1872 as fixtures do backoffice e do CRM discordavam sobre a company — as
+  companies do backoffice começam em 5, os domínios do CRM apontavam para 1 e 2, sem interseção. O
+  `DomainVoter` negava e toda rota com `{domainId}` devolvia 404. Nenhum caminho real corrige isso, e
+  sem a correção a coleção não roda. Um `UPDATE` de uma linha destravou 44 asserções.
+
 - **Always write the SQL on ONE line.** A multi-line string — a heredoc, or a quoted query that
   starts with a newline — makes the command return a bare `[OK] 0 rows affected.` instead of results.
   That looks exactly like "no rows matched", so it silently produces wrong conclusions. Verified: the
@@ -29,7 +45,8 @@ docker exec <container> php bin/console dbal:run-sql "<SELECT ...>"
   ```sql
   SELECT GROUP_CONCAT(COLUMN_NAME) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '<table>'
   ```
-- **Production never.** Only local and the shared pre-production environment, and only reads.
+- **Produção nunca.** Só dev local e pré-produção. Pré-produção é **somente leitura**; a exceção de
+  escrita acima vale apenas em dev local.
 
 ## Consultas que sempre servem
 

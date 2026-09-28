@@ -67,6 +67,12 @@ montada no ambiente implantado, branches empilhadas. Ler as duas.
 Aqui fica só o que depende do esquema, das bibliotecas ou da infraestrutura da Celesta. Um item por
 lição, datado, com o porquê.
 
+- **2026-09-24 (review, CLS-2594-CLS-3107, celesta-backoffice)** — copiar um bloco do gateway que
+  carrega `// TODO: Remove - <MS> handles this` duplica a dívida em vez de herdar o padrão. No
+  `RewardController` a checagem de status do jogador via Memberzone está assim marcada há tempo,
+  porque o promotion já valida; um endpoint novo que copia o bloco cria um segundo lugar para apagar
+  depois. Quando o spec pergunta "espelhar o bônus ou ficar proxy puro?", o TODO já é a resposta.
+
 - **2026-09-23 (review, CLS-1872, celesta-backoffice)** — descrição de atributo OpenAPI acima de 120 caracteres: **não** quebrar em strings concatenadas com `.` — isso troca o erro de `[Line length]` por `[Unnecessary string concat]`, que é igualmente um achado. Encurtar a frase; a explicação longa vai para o `_plans/`, que é onde a regra do projeto manda o racional morar. Cometido duas vezes no mesmo ticket.
 
 - **2026-09-22 (review, CLS-1872, celesta-backoffice)** — `policy` e `permission` são duas tabelas

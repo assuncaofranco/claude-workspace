@@ -44,7 +44,7 @@ PR 531 e PR 530 abertos, os dois com base em master; o 531 carrega o commit do 5
 PR 594 do celesta-constants (aprovado, não mergeado): o composer aponta para `dev-CLS-2594-CLS-3054`
 e o plano manda trocar para `^1.336` depois do auto-tag.
 
-Postei 4 comentários inline (voz de [[feedback-pr-comment-voice]]): `description` virando `''` em vez
+Postei 4 comentários inline (voz de `global/rules/writing.md`): `description` virando `''` em vez
 de null, quatro filtros do spec sem cenário nenhum, o mock do Wallet lançando 404 onde o real devolve
 `200 []`, e uma sugestão não bloqueante sobre o plano colar o código final.
 

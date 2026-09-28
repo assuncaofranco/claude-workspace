@@ -104,13 +104,40 @@ Qualquer um dos cinco pode voltar sozinho.
 ## O que observar depois de cada deploy
 
 Depois do **bo 2978**, a lista passa a carregar credencial de provedor para quem tem
-`PS_GAME_CONNECTIONS_EDIT`. Hoje isso não chega a tela nenhuma — o front em `master` não consome
-`game-providers` (a tela de Integrations só busca provedores de pagamento,
-`administration/integrations/index.js:18`). A exposição real começa com o **CLS-2981**.
+`PS_GAME_CONNECTIONS_EDIT`, e isso **já chega ao navegador**. Uma redação anterior desta seção dizia
+que o front em `master` não consumia `game-providers`; é falso. A tela de Integrations despacha
+`getGameProviderConnections` (`administration/integrations/index.js:46`), que passa por
+`store/reducers/integrations.js:95` e faz o `GET`. O payload inteiro entra no Redux e na aba de rede;
+o que só começa com o **CLS-2981** é a *exibição* do `options` num formulário. Para a AC de não expor
+credencial a quem não tem EDIT, o que conta é o deploy do bo 2978, não o do front.
 
 Depois do **bo 2979**, o primeiro `POST`/`PUT` real chama o provedor de dentro da requisição. Para a
 maioria dos tipos essa chamada baixa o catálogo inteiro, então a latência do save é a do provedor, não
 a nossa. O backoffice espera até 60s (`CurlClient::EXTENDED_REQUEST_TIME_LIMIT`).
+
+---
+
+## Os caminhos mudaram, e o front precisa acompanhar
+
+O bo 2979 tira a listagem de `/integration/game-providers`. Não há mais alias para o caminho antigo:
+a rota legada existiu por alguns dias e foi removida a pedido, porque a rota e a tela são novas e o
+deploy é de feature nova.
+
+Os caminhos finais seguem a regra de número — plural quando a resposta traz muitos, singular quando
+traz um:
+
+| Verbo | Caminho |
+|---|---|
+| `GET` | `/api/gateway/domain/{domainId}/game/game-providers` |
+| `POST` | `/api/gateway/domain/{domainId}/game/game-provider` |
+| `PUT` | `/api/gateway/domain/{domainId}/game/game-provider/{id}` |
+
+**Sem a troca no front, a lista quebra em silêncio.** O thunk engole o erro de propósito (sem
+`handleError`, com comentário explicando) e `integrations/index.js:70` só renderiza com
+`!gameProviders.error`, então os cards perdem o badge de status sem erro nenhum na tela.
+
+São duas linhas em `src/services/workers/integrations.js` — o `GET` da linha 4 e o `PUT` da linha 8.
+O `PUT` muda duas vezes: sai de `integration` e vai para o singular.
 
 ---
 

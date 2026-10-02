@@ -55,7 +55,7 @@ Jobs agendados: Rundeck (`https://rundeck.octopoprod.com/`) e Jenkins.
 | 2 | Notificação de início de turno do PagerDuty recebida | Lucas | ok verbal |
 | 3 | App do PagerDuty: alta urgência fura o "não perturbe" do celular | Lucas | ok verbal |
 | 4 | Slack no celular: notificação de todas as mensagens em `#celesta-alarms-prod-1` e `#celesta-oncall`, todos os canais da tabela acima entrados, horário de "não perturbe" do Slack desligado | Lucas | ok verbal |
-| 5 | VPN: NordLayer no gateway privado **Celesta Network**, não num país de "Shared gateways" | Lucas | eu: `scutil --nc list \| grep -i nordlayer` mostra `Connected`; o gateway só ele vê |
+| 5 | VPN: NordLayer no gateway privado **Celesta Network**, não num país de "Shared gateways" | Lucas | eu: `pgrep -fl 'NordLayer.app/.*/ovpn'` (OpenVPN) **ou** `scutil --nc list \| grep '(Connected).*NordLayer'` (NordLynx); o gateway só ele vê |
 | 6 | MFA: `awsmfa` (código ao vivo, só ele roda) | Lucas | eu: `aws sts get-caller-identity --profile <perfil>` para `celesta-prod-1` e `celesta-anj-prod-1` |
 | 7 | Pods de prod visíveis, nos dois contextos | eu | `kubectl --context <contexto> get pods -A --no-headers \| awk '{print $4}' \| sort \| uniq -c` |
 | 8 | Freelens abre `celesta-prod-1` e `celesta-anj-prod-1` | Lucas | ok verbal |
@@ -63,6 +63,9 @@ Jobs agendados: Rundeck (`https://rundeck.octopoprod.com/`) e Jenkins.
 | 10 | Login em Rundeck e Jenkins | Lucas | ok verbal |
 | 11 | App do Datadog no celular logado | Lucas | ok verbal |
 | 12 | Conectores do Claude: Datadog, PagerDuty, Slack, AWS MCP | Lucas, no claude.ai | eu: listar o que a sessão alcança |
+
+Item 5, por quê: o `scutil` só conhece o perfil NordLynx. Conectado em OpenVPN ele diz
+`Disconnected` com o túnel de pé (2026-10-02). E `grep -i connected` casa com "Disconnected".
 
 Primeira vez na vida (não por turno): instalar e logar Datadog, AWS, Slack, PagerDuty e 1Password no
 celular e configurar a notificação do PagerDuty.

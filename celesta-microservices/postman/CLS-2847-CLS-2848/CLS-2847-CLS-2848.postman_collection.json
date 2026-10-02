@@ -1,0 +1,1602 @@
+{
+  "info": {
+    "_postman_id": "a0d3dfee-3d87-5caf-9b94-4a2d73e97155",
+    "name": "CLS-2847-CLS-2848 bonus routing without flag",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1 BO bonus_configuration",
+      "item": [
+        {
+          "name": "BO token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST bonus_configuration (free)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('runTag')) {",
+                  "  pm.collectionVariables.set('runTag', 'QA2848' + Date.now().toString().slice(-7));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('id returned', () => pm.expect(j.id).to.be.a('number'));",
+                  "pm.collectionVariables.set('rcFreeId', j.id);",
+                  "",
+                  "pm.test('promotion shape (type free, manual)', () => { pm.expect(j.type).to.eql('free'); pm.expect(j.offeringMethod).to.eql('manual'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} free\",\n  \"displayName\": \"{{runTag}} free\",\n  \"type\": \"free\",\n  \"model\": \"direct\",\n  \"offeringMethod\": \"manual\",\n  \"currency\": \"EUR\",\n  \"reason\": \"test\",\n  \"validDuringDays\": 3,\n  \"offerValidFor\": 2,\n  \"claimingEvent\": \"direct\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST bonus_configuration (free_rounds)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('id returned', () => pm.expect(j.id).to.be.a('number'));",
+                  "pm.collectionVariables.set('rcFrId', j.id);",
+                  "",
+                  "pm.test('free_rounds config echoed', () => pm.expect(j.freeRoundConfiguration.games.map(g => g.id)).to.include(Number(pm.collectionVariables.get('gameId'))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} fr\",\n  \"displayName\": \"{{runTag}} fr\",\n  \"type\": \"free_rounds\",\n  \"model\": \"direct\",\n  \"offeringMethod\": \"manual\",\n  \"currency\": \"EUR\",\n  \"reason\": \"test\",\n  \"validDuringDays\": 3,\n  \"offerValidFor\": 2,\n  \"claimingEvent\": \"direct\",\n  \"freeRoundConfiguration\": {\n    \"freeRoundsGameGateway\": \"{{gameGatewayId}}\",\n    \"freeRoundsGameStudio\": \"{{gameStudioId}}\",\n    \"gameIds\": [\n      {\n        \"id\": \"{{gameId}}\"\n      }\n    ],\n    \"amount\": 1\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "GET bonus_configuration/{id}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('same id', () => pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get('rcFreeId'))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configuration/{{rcFreeId}}"
+          }
+        },
+        {
+          "name": "PUT bonus_configuration/{id}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('displayName edited', () => pm.expect(pm.response.json().displayName).to.eql(pm.collectionVariables.get('runTag') + ' edited'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configuration/{{rcFreeId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} free\",\n  \"displayName\": \"{{runTag}} edited\",\n  \"type\": \"free\",\n  \"model\": \"direct\",\n  \"offeringMethod\": \"manual\",\n  \"currency\": \"EUR\",\n  \"reason\": \"test\",\n  \"validDuringDays\": 3,\n  \"offerValidFor\": 2,\n  \"claimingEvent\": \"direct\",\n  \"status\": \"disabled\"\n}"
+            }
+          }
+        },
+        {
+          "name": "PATCH enable rcFreeId",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('enabled', () => pm.expect(pm.response.json().status).to.eql('enabled'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configuration/{{rcFreeId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"enabled\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET bonus_configuration/{id} after edit",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('edit persisted in promotion', () => { pm.expect(j.displayName).to.eql(pm.collectionVariables.get('runTag') + ' edited'); pm.expect(j.status).to.eql('enabled'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configuration/{{rcFreeId}}"
+          }
+        },
+        {
+          "name": "POST bonus_configurations (search)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('contains created config', () => pm.expect(pm.response.json().map(x => x.id)).to.include(Number(pm.collectionVariables.get('rcFreeId'))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configurations",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filter\": {\n    \"ids\": [\n      \"{{rcFreeId}}\"\n    ]\n  },\n  \"limit\": 10,\n  \"offset\": 0\n}"
+            }
+          }
+        },
+        {
+          "name": "POST bonus_configurations/search (legacy route)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('contains created config', () => pm.expect(pm.response.json().map(x => x.id)).to.include(Number(pm.collectionVariables.get('rcFreeId'))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configurations/search",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filter\": {\n    \"ids\": [\n      \"{{rcFreeId}}\"\n    ]\n  },\n  \"limit\": 10,\n  \"offset\": 0\n}"
+            }
+          }
+        },
+        {
+          "name": "POST bonus_configurations/count",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('count is 1', () => pm.expect(pm.response.json().value).to.eql(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configurations/count",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filter\": {\n    \"ids\": [\n      \"{{rcFreeId}}\"\n    ]\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "POST bonus_configuration/{id}/thumbnail",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('thumbnail set', () => pm.expect(pm.response.json().thumbnail).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configuration/{{rcFreeId}}/thumbnail",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "thumbnail",
+                  "type": "file",
+                  "src": "{{thumbnailPath}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 BO autocomplete bonus_configuration",
+      "item": [
+        {
+          "name": "BO token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "autocomplete finds promotion config",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('returns the promotion reward configuration name', () => pm.expect(JSON.stringify(pm.response.json())).to.include(pm.collectionVariables.get('runTag') + ' free'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/autocomplete?resource=bonus_configuration&field=name&query={{runTag}}&limit=10"
+          }
+        },
+        {
+          "name": "autocomplete does NOT find wallet-only bonus model",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('wallet bonus_model name not returned', () => pm.expect(JSON.stringify(pm.response.json())).to.not.include(pm.collectionVariables.get('walletOnlyName')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/autocomplete?resource=bonus_configuration&field=name&query={{walletOnlyName}}&limit=10"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3 BO offer, bonuses, cancel",
+      "item": [
+        {
+          "name": "BO token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "offer free bonus (A, for BO cancel)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('RewardOfferResponse shape', () => { pm.expect(j.id).to.be.a('number'); pm.expect(j.status).to.eql('offered'); });",
+                  "pm.collectionVariables.set('bonusBoCancelId', j.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/bonus_configuration/{{rcFreeId}}/offer",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"playerId\": \"{{playerId}}\",\n  \"amount\": 5,\n  \"message\": \"QA CLS-2848\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET bonuses (by owner + config)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "const b = j.find(x => x.id === Number(pm.collectionVariables.get('bonusBoCancelId')));",
+                  "pm.test('offered bonus listed', () => pm.expect(b).to.not.be.undefined);",
+                  "pm.test('bonusModelId is the reward configuration', () => pm.expect(b.bonusModelId).to.eql(Number(pm.collectionVariables.get('rcFreeId'))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonuses?filter[ownerIds][]={{playerId}}&filter[bonusModelIds][]={{rcFreeId}}&limit=50"
+          }
+        },
+        {
+          "name": "GET bonuses/count",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('count >= 1', () => pm.expect(pm.response.json().value).to.be.at.least(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonuses/count?aggregate[aggregator]=count&aggregate[field]=id&filter[ownerIds][]={{playerId}}&filter[bonusModelIds][]={{rcFreeId}}"
+          }
+        },
+        {
+          "name": "POST player/{p}/bonus/{b}/cancel",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('canceled', () => pm.expect(pm.response.json().status).to.eql('canceled'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/bonus/{{bonusBoCancelId}}/cancel",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"playerId\": \"{{playerId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET bonuses after cancel",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json().find(x => x.id === Number(pm.collectionVariables.get('bonusBoCancelId')));",
+                  "pm.test('status canceled read back', () => pm.expect(b.status).to.eql('canceled'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonuses?filter[ownerIds][]={{playerId}}&filter[bonusModelIds][]={{rcFreeId}}&filter[statuses][]=canceled&limit=50"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4 BO promotion reward bonusModelId (BonusModelSubscriber)",
+      "item": [
+        {
+          "name": "BO token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "reward with unknown bonusModelId -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('invalid bonus model error', () => pm.expect(pm.response.text()).to.include('Provided bonus model id is invalid.'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration/{{promotionConfigurationId}}/reward",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"free_bonus\",\n  \"bonusModelId\": 999999,\n  \"quantity\": 5,\n  \"options\": {\n    \"upToAmount\": 5\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "reward with promotion bonusModelId -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('rewardId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration/{{promotionConfigurationId}}/reward",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"free_bonus\",\n  \"bonusModelId\": \"{{rcFreeId}}\",\n  \"quantity\": 5,\n  \"options\": {\n    \"upToAmount\": 5\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "cleanup: delete reward",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('deleted', () => pm.expect(pm.response.code).to.be.oneOf([200, 204]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration/{{promotionConfigurationId}}/reward/{{rewardId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5 BO setup for player",
+      "item": [
+        {
+          "name": "BO token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "offer free bonus (to claim)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('RewardOfferResponse shape', () => { pm.expect(j.id).to.be.a('number'); pm.expect(j.status).to.eql('offered'); });",
+                  "pm.collectionVariables.set('bonusClaimId', j.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/bonus_configuration/{{rcFreeId}}/offer",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"playerId\": \"{{playerId}}\",\n  \"amount\": 5,\n  \"message\": \"QA CLS-2848\"\n}"
+            }
+          }
+        },
+        {
+          "name": "offer free bonus (to cancel)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('RewardOfferResponse shape', () => { pm.expect(j.id).to.be.a('number'); pm.expect(j.status).to.eql('offered'); });",
+                  "pm.collectionVariables.set('bonusGwCancelId', j.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/bonus_configuration/{{rcFreeId}}/offer",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"playerId\": \"{{playerId}}\",\n  \"amount\": 5,\n  \"message\": \"QA CLS-2848\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST bonus_configuration (deposit, min 10 max 100)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('id returned', () => pm.expect(j.id).to.be.a('number'));",
+                  "pm.collectionVariables.set('rcDepId', j.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} dep\",\n  \"displayName\": \"{{runTag}} dep\",\n  \"type\": \"deposit\",\n  \"model\": \"wager\",\n  \"offeringMethod\": \"manual\",\n  \"currency\": \"EUR\",\n  \"reason\": \"test\",\n  \"validDuringDays\": 3,\n  \"offerValidFor\": 2,\n  \"claimingEvent\": \"deposit\",\n  \"wageringMultiplier\": 5,\n  \"maxWinMultiplier\": 10,\n  \"offerPercent\": 100,\n  \"offerUpToAmount\": 50,\n  \"claimingEventCondition\": {\n    \"depositAmountMin\": 10,\n    \"depositAmountMax\": 100\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "PATCH enable rcDepId",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('enabled', () => pm.expect(pm.response.json().status).to.eql('enabled'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configuration/{{rcDepId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"enabled\"\n}"
+            }
+          }
+        },
+        {
+          "name": "offer deposit bonus",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('bonusDepId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/bonus_configuration/{{rcDepId}}/offer",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"playerId\": \"{{playerId}}\",\n  \"message\": \"QA CLS-2848\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6 GW player bonuses",
+      "item": [
+        {
+          "name": "Player token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"player\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"client_id\": \"{{oauth_client_id}}\",\n  \"client_secret\": \"{{oauth_client_secret}}\",\n  \"deviceInformation\": {\n    \"ip\": \"127.0.0.1\",\n    \"userAgent\": \"Mozilla/5.0\"\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /bonuses",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "{",
+                  "const want = Number(pm.collectionVariables.get('bonusClaimId'));",
+                  "const b = (j.bonus || j).find(x => String(x.id).endsWith('_' + want) || x.id === want);",
+                  "pm.test('bonus bonusClaimId listed', () => pm.expect(b).to.not.be.undefined);",
+                  "if (b) pm.collectionVariables.set('gwClaimId', String(b.id));",
+                  "}",
+                  "",
+                  "{",
+                  "const want = Number(pm.collectionVariables.get('bonusGwCancelId'));",
+                  "const b = (j.bonus || j).find(x => String(x.id).endsWith('_' + want) || x.id === want);",
+                  "pm.test('bonus bonusGwCancelId listed', () => pm.expect(b).to.not.be.undefined);",
+                  "if (b) pm.collectionVariables.set('gwCancelId', String(b.id));",
+                  "}",
+                  "",
+                  "{",
+                  "const want = Number(pm.collectionVariables.get('bonusDepId'));",
+                  "const b = (j.bonus || j).find(x => String(x.id).endsWith('_' + want) || x.id === want);",
+                  "pm.test('bonus bonusDepId listed', () => pm.expect(b).to.not.be.undefined);",
+                  "if (b) pm.collectionVariables.set('gwDepId', String(b.id));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/bonuses"
+          }
+        },
+        {
+          "name": "POST /bonuses/claim",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('claimed', () => pm.expect(pm.response.json()[0].status).to.eql('claimed'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/bonuses/claim",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bonusIds\": [\n    \"{{gwClaimId}}\"\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /bonus/{id}/cancel",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('canceled', () => pm.expect(pm.response.json().status).to.eql('canceled'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/bonus/{{gwCancelId}}/cancel"
+          }
+        },
+        {
+          "name": "GET /bonuses after claim/cancel",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "const list = j.bonus || j;",
+                  "const st = id => (list.find(x => String(x.id) === pm.collectionVariables.get(id)) || {}).status;",
+                  "pm.test('claim read back', () => pm.expect(st('gwClaimId')).to.eql('claimed'));",
+                  "pm.test('cancel read back', () => pm.expect(st('gwCancelId')).to.eql('canceled'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/bonuses?statuses[]=claimed&statuses[]=canceled"
+          }
+        },
+        {
+          "name": "POST /payment below bonus min -> 400 bonus condition",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('rejected by deposit bonus condition (BonusFetcher reached promotion)', () => pm.expect(pm.response.text()).to.include('Deposit amount does not meet bonus deposit condition.'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/payment",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 5,\n  \"ip\": \"127.0.0.1\",\n  \"userAgent\": \"Mozilla/5.0\",\n  \"successUrl\": \"https://example.com/success\",\n  \"failureUrl\": \"https://example.com/failure\",\n  \"bonusIds\": [\n    \"{{gwDepId}}\"\n  ],\n  \"paymentInformation\": {\n    \"paymentConfigurationId\": \"{{paymentConfigurationId}}\"\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /payment inside bonus range -> passes bonus check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('not rejected by bonus condition', () => pm.expect(pm.response.text()).to.not.include('Deposit amount does not meet bonus deposit condition.'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/payment",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 20,\n  \"ip\": \"127.0.0.1\",\n  \"userAgent\": \"Mozilla/5.0\",\n  \"successUrl\": \"https://example.com/success\",\n  \"failureUrl\": \"https://example.com/failure\",\n  \"bonusIds\": [\n    \"{{gwDepId}}\"\n  ],\n  \"paymentInformation\": {\n    \"paymentConfigurationId\": \"{{paymentConfigurationId}}\"\n  }\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7 BO bulk action offer_free_bonus",
+      "item": [
+        {
+          "name": "BO token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST bulk_action",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('id returned', () => pm.expect(j.id).to.be.a('number'));",
+                  "pm.collectionVariables.set('bulkActionId', j.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bulk_action",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "type",
+                  "value": "offer_free_bonus",
+                  "type": "text"
+                },
+                {
+                  "key": "bonusModelId",
+                  "value": "{{rcFreeId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "{{bulkCsvPath}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST bulk_action/{id}/process",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bulk_action/{{bulkActionId}}/process"
+          }
+        }
+      ]
+    },
+    {
+      "name": "8 BO bulk action verify (after worker consume)",
+      "item": [
+        {
+          "name": "BO token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET bulk_action/{id}/items",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('item done', () => pm.expect(j[0].status).to.eql('done'));",
+                  "pm.test('no errors', () => pm.expect(j[0].errors).to.be.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bulk_action/{{bulkActionId}}/items"
+          }
+        }
+      ]
+    },
+    {
+      "name": "9 BO delete bonus_configuration",
+      "item": [
+        {
+          "name": "BO token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST bonus_configuration (to delete)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('id returned', () => pm.expect(j.id).to.be.a('number'));",
+                  "pm.collectionVariables.set('rcDelId', j.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} del\",\n  \"displayName\": \"{{runTag}} del\",\n  \"type\": \"free\",\n  \"model\": \"direct\",\n  \"offeringMethod\": \"manual\",\n  \"currency\": \"EUR\",\n  \"reason\": \"test\",\n  \"validDuringDays\": 3,\n  \"offerValidFor\": 2,\n  \"claimingEvent\": \"direct\"\n}"
+            }
+          }
+        },
+        {
+          "name": "DELETE bonus_configuration/{id}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('returns deleted config', () => pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get('rcDelId'))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configuration/{{rcDelId}}"
+          }
+        },
+        {
+          "name": "GET deleted -> 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configuration/{{rcDelId}}"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "BO_baseUrl",
+      "value": "http://localhost:84"
+    },
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:93"
+    },
+    {
+      "key": "domainId",
+      "value": "1"
+    },
+    {
+      "key": "playerId",
+      "value": "1"
+    },
+    {
+      "key": "gameId",
+      "value": "10"
+    },
+    {
+      "key": "gameGatewayId",
+      "value": "6"
+    },
+    {
+      "key": "gameStudioId",
+      "value": "6"
+    },
+    {
+      "key": "paymentConfigurationId",
+      "value": "3"
+    },
+    {
+      "key": "promotionConfigurationId",
+      "value": "1"
+    },
+    {
+      "key": "walletOnlyName",
+      "value": "Welcome offer"
+    },
+    {
+      "key": "thumbnailPath",
+      "value": "thumbnail.png"
+    },
+    {
+      "key": "bulkCsvPath",
+      "value": "bulk.csv"
+    },
+    {
+      "key": "runTag",
+      "value": ""
+    },
+    {
+      "key": "BO_access_token",
+      "value": ""
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "rcFreeId",
+      "value": ""
+    },
+    {
+      "key": "rcFrId",
+      "value": ""
+    },
+    {
+      "key": "rcDepId",
+      "value": ""
+    },
+    {
+      "key": "rcDelId",
+      "value": ""
+    },
+    {
+      "key": "bonusBoCancelId",
+      "value": ""
+    },
+    {
+      "key": "bonusClaimId",
+      "value": ""
+    },
+    {
+      "key": "bonusGwCancelId",
+      "value": ""
+    },
+    {
+      "key": "bonusDepId",
+      "value": ""
+    },
+    {
+      "key": "gwClaimId",
+      "value": ""
+    },
+    {
+      "key": "gwCancelId",
+      "value": ""
+    },
+    {
+      "key": "gwDepId",
+      "value": ""
+    },
+    {
+      "key": "rewardId",
+      "value": ""
+    },
+    {
+      "key": "bulkActionId",
+      "value": ""
+    }
+  ]
+}

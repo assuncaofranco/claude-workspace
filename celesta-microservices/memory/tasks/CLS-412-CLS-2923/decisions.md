@@ -1,22 +1,44 @@
 ---
 name: cls-412-cls-2923-decisions
-description: "CLS-412-CLS-2923 (celesta-promotion, offer sem BO user e idempotente) — as 4 decisões de desenho, o contrato acordado com o time do celesta-scenario e as 3 perguntas pendentes para a PO"
+description: "CLS-412-CLS-2923 (celesta-promotion, offer sem BO user, idempotente e atribuído ao cenário) — estado em 2026-09-30, as decisões de desenho, o contrato com o celesta-scenario e o que falta"
 metadata: 
   node_type: memory
   type: project
   originSessionId: 00170055-795b-4ad9-bb66-c5e084632793
-  modified: 2026-09-28T08:38:12.786Z
+  modified: 2026-10-01T14:22:00.589Z
 ---
 
-Ticket filho do épico CLS-412 ("Offer bonus as a scenario action"). Estado em 2026-09-25: branch
-`CLS-412-CLS-2923` criada a partir do master, **spec e plano escritos mas não commitados**, zero
-código. Artefatos em `celesta-promotion/sdd/_specs/CLS-412-CLS-2923.md` e `sdd/_plans/`.
+Ticket filho do épico CLS-412 ("Offer bonus as a scenario action"). Artefatos em
+`celesta-promotion/sdd/_specs/CLS-412-CLS-2923.md`, `sdd/_plans/` e `sdd/_how_to_test/`.
+
+## Estado em 2026-09-30, fim do dia
+
+Implementação do promotion **completa e verde, não commitada**. PR #535 aberto, comentários do
+Copilot e do Socrates aplicados e respondidos, master mergeado. Último run: phpunit 1647/1647, behat
+1034/1034, Newman 9 requests / 24 assertions com 0 falhas, `make lint` exit 0.
+
+**O escopo mudou neste dia.** O PO falou com o Lucas e com o Pedro: entram o `source_scenario_id`
+(ver decisão H) e o endpoint de gift — mas o gift **saiu para o CLS-3230, do Bohdan**, não é nosso.
+
+Pendências quando retomar:
+1. Commitar o promotion.
+2. O backoffice: branch `CLS-412-CLS-2923` já criada a partir do master (`63cb399fb5`), **vazia**.
+   Falta somar `sourceScenarioId` e `sourceUserId` ao whitelist do
+   `GatewayBundle/Normalizer/Promotion/BonusNormalizer.php` — sem isso o campo morre lá e a AC do
+   épico não fecha. A coluna na tela é front, ticket de outro.
+3. Avisar o Pedro de duas coisas: o `REFUSAL_STATUSES = [400, 404]` dele precisa do **422**, e a
+   `description` da action fica do lado dele (ver abaixo).
+4. Flag `move_bonus_to_promotion` foi ligada no flipper local; reverter se incomodar.
+5. **Nota do Lucas, 2026-10-01:** na resposta, só os dois sources (`sourceUserId`, `sourceScenarioId`)
+   vão em camelCase; o campo de idempotência **não**. Chegou numa sessão de outro ticket
+   (CLS-2847-CLS-2848), então pode não ter sido aplicada ainda onde se trabalhava no CLS-412.
 
 ## As 4 decisões
 
 | # | Decisão |
 |---|---|
-| A | `sourceUserId` vira opcional, `source_user_id` fica `NULL`. Nada de formato de cenário no bônus |
+| A | `sourceUserId` vira opcional, `source_user_id` fica `NULL` |
+| H | **Revertida em 2026-09-30:** o bônus passa a guardar `source_scenario_id`, coluna nullable ao lado de `source_user_id`, devolvida no payload. Duas colunas, não `source_type` + `source_id` polimórfico — esse obrigaria backfill de toda a tabela e quebraria quem já lê `sourceUserId`. Mandar as duas na mesma chamada é **400 `AMBIGUOUS_OFFER_SOURCE`**: preferir uma em silêncio grava origem errada que ninguém detecta depois |
 | B | Idempotência por **chave do caller**: `idempotencyKey` no corpo (nome escolhido **pelo Pedro**, 2026-09-25), coluna `idempotency_key` VARCHAR(64) no `bonus`, índice único `(player_id, reward_configuration_id, idempotency_key)` |
 | E | **Um só corpo de erro**: `message` + `code`, com `error` e `errors` mantidos como legado |
 | G | **201 quando cria, 200 quando repete** — o caller não tem outra forma de distinguir, o corpo é idêntico. Não diz se *ele* já gravou a activity dele; isso só ele sabe |
@@ -99,7 +121,7 @@ ticket existe para corrigir.
 
 ## Contrato acordado com o celesta-scenario (Pedro Martins, 2026-09-25)
 
-- **Eles** geram a chave e mandam no payload. Formato `<ActionJob id>:<playerId>` — o id do job é
+- **Eles** geram a chave e mandam no payload. Formato `<scenarioId>:<ActionJob id>:<playerId>` — o id do job é
   `uniqid('job_')`, estável na reentrega, mas cobre lote de até 50 jogadores, então sem o `playerId`
   o segundo jogador do lote vira repetição do primeiro. **Confirmado no código** deles em 2026-09-25.
 - `sourceUserId`: no chat ele disse `null` explícito, mas o **código omite o campo**
@@ -114,9 +136,9 @@ ticket existe para corrigir.
 
 ## Pendente com a PO, não bloqueia o código
 
-1. O AC do pai diz *"its source identifies the scenario that created it"*, mas o filho manda não
-   guardar nada de cenário no bônus. A lista de bônus do BO vai mostrar origem vazia; quem identifica
-   o cenário é a activity do CLS-2925, que é outra tela.
+1. ~~Origem do bônus na lista do BO~~ — **resolvido em 2026-09-30**, virou a decisão H. Precisa dos
+   três pedaços: promotion guarda e devolve (feito), o normalizer do BO repassa (branch criada,
+   pendente), o front mostra a coluna (ticket de outro).
 2. `offerKey` cobre reentrega do mesmo job, não disparo novo. Em config manual nada limita oferta
    repetida, porque `OccurrencesInRecurrencePeriodCondition` só roda em `automatic`.
 3. Jogador que pediu para não receber oferta continua recebendo do cenário, igual à bulk action de
@@ -145,3 +167,33 @@ docker externa `celesta` com os aliases `promotionweb.docker` e `scenarioweb.doc
 Matriz de 23 células no spec, 14 delas A com critério observável. Célula 8 (duas chamadas
 concorrentes com a mesma chave) fica sem teste automático de propósito — Behat é processo único e o
 repo não tem harness de teste de controller.
+
+
+## Achados de 2026-09-30
+
+**`Bonus::jsonSerialize()` não é o que a lista de bônus devolve.** `GET /api/domain/{id}/bonuses`
+passa por `BonusNormalizer::normalizeMany()` → `normalizeBonus()`, que monta o array dele. Campo
+somado só na entity chega ao banco e para ali. Peguei isso no cruzamento doc × resposta real do
+Newman, não lendo o código — foi o passo que o `ticket-postman` manda fazer e que teria passado batido.
+
+**O `normalizeBonus()` não devolvia origem nenhuma**, nem `sourceUserId`. Somei os dois: expor só o
+cenário deixaria a coluna de origem do BO capaz de nomear cenário e nunca operador. É mudança que o
+ticket não pediu, registrada no spec como tal.
+
+**O BO remapeia campo a campo, não repassa.** `GatewayBundle/Normalizer/Promotion/BonusNormalizer.php`
+tem whitelist de 18 campos; o que não está nela some. É por isso que o item 2 das pendências existe.
+
+**A `description` da action fica com o scenario.** O BO nunca mandou description para o promotion — a
+bulk action manda só `amount`, `currency` e `sourceUserId` (`OfferFreeBonusHandler.php:80-82`), e a
+descrição do modal vira `note` no `additionalData` da activity entry, com `sourceType = user`
+(`UserActivityJobManager.php:155`). O scenario espelha: mesma activity, `sourceType = scenario`.
+
+**Promotion não consegue saber quem está chamando.** `GUARD_KEY` é uma chave só para todo caller
+(`config/parameters.yaml:12`), então "exigir `sourceUserId` se for BO, `sourceScenarioId` se for
+scenario" não é implementável — só dá para confiar no que o caller declarar, que é igual a campo
+opcional.
+
+**Duas ofertas `offered` do mesmo par player × config não quebram o claim de depósito.**
+`DepositRewardClaimService` recebe reward ids compostos `<rewardConfigurationId>:<bonusId>` e busca
+aquele bônus com filtro de status (`resolveBonus()`); não tem "pega o primeiro" nem claim duplo. Logo
+duplicação vinda de bug do scenario é problema deles, e visível, não silencioso.

@@ -9,15 +9,30 @@ estado intermediário tem que ser inofensivo.
 ## Ordem
 
 ```
-1.  celesta-game       CLS-2978   (campos na listagem)
-2.  celesta-game       CLS-2979   (POST + PUT)
-3.  celesta-backoffice CLS-2980   (policy + gate de leitura)   ← roda migration
-4.  celesta-backoffice CLS-2978   (mapeia os campos, esconde options)
-5.  celesta-backoffice CLS-2979   (proxy de escrita)
+Release constants
+
+Deploy:
+celesta-game CLS-2978
+celesta-game CLS-2979
+
+celesta-backoffice CLS-2980
+celesta-backoffice CLS-2978
+celesta-backoffice CLS-2979
 ```
 
 **Regra curta: o game inteiro antes do backoffice.** Dentro de cada serviço, a ordem dos tickets é a
-da pilha de PRs, e o GitHub já a força — cada PR tem o anterior como base.
+da pilha de PRs, e o GitHub já a força, porque cada PR tem o anterior como base.
+
+**O release de constants não é um ticket.** É a biblioteca `celesta-constants`, numa branch que eu
+nomeei `CLS-1872-CLS-2979` por ser o ticket que a consome. O nome confunde: ela vem primeiro
+justamente porque o backoffice CLS-2979 depende dela.
+
+**E ela só trava o backoffice CLS-2979.** Os `composer.json` do 2980 e do 2978 pedem `^v1.337`, a tag
+publicada. Só o 2979 aponta para `dev-CLS-1872-CLS-2979`, porque é ele que lê `OPTIONS_BY_TYPE`. Todo
+o resto pode ir sem esperar a biblioteca; antes de mergear o 2979, a tag tem que existir e o
+`composer.json` dele voltar para a faixa de versão.
+
+**Nenhum passo roda migration.** Ver a seção Migration abaixo.
 
 ---
 
@@ -76,14 +91,18 @@ sozinho também deixou de ser perigoso — e essa é a razão de ser da correç�
 
 ## Migration
 
-Só o **bo 2980** tem migration (`Version20260921000000`), e ela roda no job `migration` do CI antes do
-deploy (`.github/workflows/ci.yml:15`).
+**Nenhuma.** O bo 2980 tinha uma, que criava a policy `PS_GAME_CONNECTIONS_SEE`, e ela foi removida em
+2026-09-30 quando o PO decidiu que a permissão genérica de integration concede a leitura de todas as
+integrations. Nada neste épico escreve no banco do backoffice.
 
-- Idempotente: `INSERT IGNORE` nas quatro tabelas, todas com o índice único necessário.
-- O `down()` remove **só** o que ela criou: a policy nova, o vínculo em `policy_permission` e o
-  `role_policy`. **Não** apaga a linha de `permission`, que pertence à migration do CLS-1821 e continua
-  referenciada pela policy `PS_GAME_CONNECTIONS_EDIT`.
-- Não depende dos outros quatro deploys, em nenhuma direção.
+A permissão `PS_GAME_CONNECTIONS_SEE` continua existindo, criada pelo CLS-1821, e a policy
+`PS_GAME_CONNECTIONS_EDIT` continua carregando ela. Nenhum endpoint a lê. Remover a linha é limpeza
+para um ticket próprio, junto com o controller de fraud prevention, que ainda usa o desenho de três
+níveis.
+
+Em preprod-1 sobraram a policy e os vínculos que aquela migration criou em 23/09. Como a migration não
+existe mais, ninguém vai removê-los automaticamente. Decidido deixar: não foi para produção e não
+atrapalha.
 
 ---
 

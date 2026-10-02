@@ -96,5 +96,12 @@ lição, datado, com o porquê.
   asset que uma classe de `celesta-constants` já define, usar a constante. Um literal que diverge cai
   no `default =>`, que aqui teria aplicado silenciosamente a permissão errada.
 
+- **2026-10-01 (review, CLS-412-CLS-2923, celesta-promotion)** — campo novo num Symfony Form Type sem
+  tipo declarado (`->add('campo')`) chega ao setter como o que o JSON trouxer. Com um setter `?int`,
+  uma string não numérica vira `TypeError` e **500**, não erro de validação. `->add('campo',
+  IntegerType::class)` devolve 400 com erro por campo. Dois detalhes que esconderam isto: o opcache do
+  container serve a versão antiga do form mesmo depois de `cache:clear`, então o teste do fix exige
+  `docker compose restart php`; e o Behat nunca pegaria, porque os cenários mandam o tipo certo.
+
 - **Constantes novas quebram o teste de constantes do backoffice, sempre.** Ver
   [`../constants-backlog.md`](../constants-backlog.md).

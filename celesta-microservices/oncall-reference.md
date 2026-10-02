@@ -36,6 +36,7 @@ hesitar. O texto de escalonamento segue a skill `oncall`, saída ESCALAR.
 | `#celesta-support-winspire` | pedido de negócio | — |
 | `#celesta-brand` | pedido de marca | — |
 | `#celesta-statuspage-notifications` | status page | — |
+| `#sre-b2b-celesta` | não está na policy. Anúncio do time de SRE e relatório diário do Datadog (5xx por serviço). Não chega alarme | na triagem, procurar aqui mudança de infra recente que explique o alerta, antes de suspeitar de código |
 
 Jobs agendados: Rundeck (`https://rundeck.octopoprod.com/`) e Jenkins.
 

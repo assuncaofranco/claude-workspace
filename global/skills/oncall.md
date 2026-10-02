@@ -55,6 +55,8 @@ Primeira coisa, sempre — antes de qualquer hipótese:
 
 - Pedir para o usuário buscar nos canais de alerta pelo nome do monitor ou pela classe da exceção, e
   ler as threads. Ele esquece disso, e o debate antigo costuma já ter a resposta.
+- Se a referência tiver canal de anúncio de mudança de infra, pedir para olhar as últimas mensagens
+  dele. Uma mudança anunciada explica o alerta antes de qualquer hipótese de código.
 - Casar o alerta com o índice de incidentes do arquivo de referência no mesmo momento. Abrir o
   arquivo do incidente só se uma linha casar.
 

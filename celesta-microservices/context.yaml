@@ -138,18 +138,5 @@ environments:
   prod-1:    {read_only: true, note: nunca escrever, nunca ler banco}
   prod-2:    {read_only: true, vertical: sportsbook}
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Oncall. O canal decide o perfil de AWS a usar.
-# ─────────────────────────────────────────────────────────────────────────────
-oncall:
-  channels:
-    '#celesta-alarms-prod-1': {env: prod-1, aws_profile: celesta-prod-1}
-    '#celesta-alarms-prod-2': {env: prod-2, aws_profile: celesta-prod-2}
-  escalation_role: VP
-  scheduled_jobs: Rundeck
-  rule: alerta de produção não é ticket — vai para /oncall, nunca para o fluxo de spec/plan
-  # Quanto o serviço sobe a régua de "acordar alguém".
-  severity_tiers:
-    money: [celesta-payment, celesta-wallet, celesta-sb-wallet]
-    player_facing: [celesta-gateway, celesta-game, celesta-promotion, celesta-auth]
-    rarely_urgent: [celesta-statistics, celesta-segment, celesta-activity]
+# Oncall não mora aqui: canais, perfis, escalonamento e checklist estão todos em
+# oncall-reference.md, lido uma vez por turno.

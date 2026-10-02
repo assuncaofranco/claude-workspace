@@ -33,7 +33,8 @@ menção a estar de oncall — vai para `/oncall`, **não** para o fluxo de tick
 `ticket-understand`, sem spec/plano, sem código. É produção: investigação somente-leitura, e toda
 ação que muda estado é escrita para o Lucas executar ele mesmo.
 
-O canal decide o perfil de AWS — ver `oncall.channels` no `context.yaml`.
+Entrar ou sair do turno, sem alerta, é `/oncall-shift`. Canais, perfis, escalonamento, checklist e
+índice de incidentes: [`oncall-reference.md`](oncall-reference.md).
 
 ---
 

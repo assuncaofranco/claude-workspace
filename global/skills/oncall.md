@@ -14,13 +14,13 @@ A única pergunta que esta skill existe pra responder:
 Na prática quase nunca é bug de código. É spike de fila, job agendado travado ou dependência
 externa. Investigar solto em produção às 3h da manhã custa mais do que resolve.
 
-Canais de alerta, perfis de nuvem, destinatário do escalonamento e quais serviços tocam dinheiro vêm
-da tabela de contexto do projeto (para a Celesta: `celesta-microservices/context.yaml`, chave
-`oncall:`).
+Canais de alerta, perfis de nuvem, escalonamento, quais serviços tocam dinheiro e o índice de
+incidentes vêm do arquivo de referência de oncall do overlay (para a Celesta:
+`celesta-microservices/oncall-reference.md`). Uma leitura só; se já foi lido no turno, não reler.
 
 ## Como a conversa roda
 
-Vale o padrão de sempre (`../memory/preferences.md`), com um agravante: é madrugada.
+Vale o padrão de sempre (`../rules/writing.md`), com um agravante: é madrugada.
 
 - Frases curtas, uma ideia por vez. Pergunta e resposta. A cabeça dele não pode cansar de ler antes
   de ele conseguir desligar.
@@ -46,7 +46,8 @@ Se a ação corrige o sintoma sem explicar a causa (rodar de novo o job travado 
 
 **Ambiente:** o canal de onde veio o alerta decide o perfil de nuvem — o mapeamento está na tabela
 de contexto. Confirmar qual **antes** de qualquer leitura: olhar a fila do ambiente errado produz uma
-conclusão errada com confiança total, que é o pior desfecho possível às 3h da manhã.
+conclusão errada com confiança total, que é o pior desfecho possível às 3h da manhã. Testar a sessão
+com o comando de identidade do arquivo de referência antes da primeira leitura; expirada, pedir o MFA.
 
 ## 0. Histórico antes de investigar
 
@@ -54,7 +55,8 @@ Primeira coisa, sempre — antes de qualquer hipótese:
 
 - Pedir para o usuário buscar nos canais de alerta pelo nome do monitor ou pela classe da exceção, e
   ler as threads. Ele esquece disso, e o debate antigo costuma já ter a resposta.
-- Checar a pasta de incidentes na memória do projeto no mesmo momento.
+- Casar o alerta com o índice de incidentes do arquivo de referência no mesmo momento. Abrir o
+  arquivo do incidente só se uma linha casar.
 
 Se já aconteceu: o que fizeram, funcionou, é o mesmo padrão? Se for, pular direto pro balde e ir pra decisão.
 
@@ -107,7 +109,7 @@ Responder explicitamente, com evidência, antes de concluir qualquer coisa:
 verificação); ele executa; conferimos juntos e confirmamos que o sintoma parou. Não encerrar sem essa
 confirmação.
 
-**ESCALAR** — fora do alcance dele. O destinatário está na tabela de contexto (`oncall.escalation_role`).
+**ESCALAR** — fora do alcance dele. Tier, destinatário e tempos estão no arquivo de referência.
 Entrego o texto pronto: o que está quebrado, impacto, o que já foi verificado, o que precisa ser
 feito, e por que não pode esperar de manhã.
 
@@ -129,4 +131,6 @@ Aguarda dia útil: sim/não — por quê
 
 Escrever `<memória do projeto>/oncall/<AAAA-MM-DD>-<serviço>.md`: alerta, balde, causa raiz (ou "não confirmada"), ação, resultado. Se caiu em REPORTAR E ESPERAR, registrar o que checar depois.
 
-A linha do índice aponta para a **pasta** de incidentes, não para cada um — ela cresce todo mês.
+Acrescentar uma linha no índice de incidentes do arquivo de referência (monitor, balde, saída,
+arquivo). É ela que evita abrir arquivo no próximo alerta. A linha do `MEMORY.md` aponta para a
+**pasta**, não para cada um — ela cresce todo mês.

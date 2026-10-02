@@ -13,7 +13,8 @@ de contexto custa mais que uma pergunta.
 
 | Sinal no input | Contexto | Carregar |
 |---|---|---|
-| Veio de canal de alarme, PagerDuty, Datadog, ou "estou de oncall" | **oncall** | `skills/oncall.md` + `rules/environment.md`. **Nunca** o fluxo de ticket. |
+| Alerta colado: canal de alarme, PagerDuty, Datadog | **oncall** | `skills/oncall.md` + `rules/environment.md`. **Nunca** o fluxo de ticket. |
+| "estamos em oncall", "começou/acabou meu turno", sem alerta | **turno** | `skills/oncall-shift.md` |
 | Menciona id de ticket, ou descreve mudança a fazer | **ticket** | seção 2 abaixo |
 | Pede review, cita PR, ou traz comentário de review para resolver | **review** | seção 3 abaixo |
 | Pergunta sobre o código, sem pedir mudança | **consulta** | nada; responder. `skills/explain.md` se pedir explicação. |

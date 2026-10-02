@@ -136,7 +136,7 @@ environments:
   dev:       {secrets: dev}
   preprod-1: {secrets: preprod, shared: true, db_read: kubectl + dbal:run-sql}
   prod-1:    {read_only: true, note: nunca escrever, nunca ler banco}
-  prod-2:    {read_only: true, vertical: sportsbook}
+  prod-2:    {read_only: true, vertical: sportsbook, aws_profile: celesta-anj-prod-1}   # nada se chama celesta-prod-2
 
 # Oncall não mora aqui: canais, perfis, escalonamento e checklist estão todos em
 # oncall-reference.md, lido uma vez por turno.

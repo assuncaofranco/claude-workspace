@@ -31,7 +31,7 @@ hesitar. O texto de escalonamento segue a skill `oncall`, saída ESCALAR.
 | Canal | Para quê | Ambiente → perfil AWS / contexto kube |
 |---|---|---|
 | `#celesta-alarms-prod-1` | eventos do PagerDuty | prod-1 → `celesta-prod-1` / `celesta-prod-1` |
-| `#celesta-alarms-prod-2` | ? | **não confirmado**: sem perfil nem contexto `celesta-prod-2` na máquina |
+| `#celesta-alarms-prod-2` | eventos do PagerDuty, sportsbook | prod-2 → `celesta-anj-prod-1` / `celesta-anj-prod-1`. Não existe nada chamado `celesta-prod-2`: o canal diz prod-2, a role diz anj |
 | `#celesta-oncall` | falar com todo o oncall; handoff vai aqui | — |
 | `#celesta-support-winspire` | pedido de negócio | — |
 | `#celesta-brand` | pedido de marca | — |
@@ -56,9 +56,9 @@ Jobs agendados: Rundeck (`https://rundeck.octopoprod.com/`) e Jenkins.
 | 3 | App do PagerDuty: alta urgência fura o "não perturbe" do celular | Lucas | ok verbal |
 | 4 | Slack no celular: notificação de todas as mensagens em `#celesta-alarms-prod-1` e `#celesta-oncall`, todos os canais da tabela acima entrados, horário de "não perturbe" do Slack desligado | Lucas | ok verbal |
 | 5 | VPN conectada | Lucas | cliente: **a confirmar** |
-| 6 | MFA: `awsmfa` (código ao vivo, só ele roda) | Lucas | eu: `aws sts get-caller-identity --profile celesta-prod-1` |
-| 7 | Pods de prod visíveis | eu | `kubectl --context celesta-prod-1 get pods -A --no-headers \| awk '{print $4}' \| sort \| uniq -c` |
-| 8 | Freelens abre o contexto `celesta-prod-1` | Lucas | ok verbal |
+| 6 | MFA: `awsmfa` (código ao vivo, só ele roda) | Lucas | eu: `aws sts get-caller-identity --profile <perfil>` para `celesta-prod-1` e `celesta-anj-prod-1` |
+| 7 | Pods de prod visíveis, nos dois contextos | eu | `kubectl --context <contexto> get pods -A --no-headers \| awk '{print $4}' \| sort \| uniq -c` |
+| 8 | Freelens abre `celesta-prod-1` e `celesta-anj-prod-1` | Lucas | ok verbal |
 | 9 | 1Password: cofre on-call compartilhado visível | Lucas | ok verbal |
 | 10 | Login em Rundeck e Jenkins | Lucas | ok verbal |
 | 11 | App do Datadog no celular logado | Lucas | ok verbal |

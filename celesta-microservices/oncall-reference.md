@@ -55,7 +55,7 @@ Jobs agendados: Rundeck (`https://rundeck.octopoprod.com/`) e Jenkins.
 | 2 | Notificação de início de turno do PagerDuty recebida | Lucas | ok verbal |
 | 3 | App do PagerDuty: alta urgência fura o "não perturbe" do celular | Lucas | ok verbal |
 | 4 | Slack no celular: notificação de todas as mensagens em `#celesta-alarms-prod-1` e `#celesta-oncall`, todos os canais da tabela acima entrados, horário de "não perturbe" do Slack desligado | Lucas | ok verbal |
-| 5 | VPN conectada | Lucas | cliente: **a confirmar** |
+| 5 | VPN: NordLayer no gateway privado **Celesta Network**, não num país de "Shared gateways" | Lucas | eu: `scutil --nc list \| grep -i nordlayer` mostra `Connected`; o gateway só ele vê |
 | 6 | MFA: `awsmfa` (código ao vivo, só ele roda) | Lucas | eu: `aws sts get-caller-identity --profile <perfil>` para `celesta-prod-1` e `celesta-anj-prod-1` |
 | 7 | Pods de prod visíveis, nos dois contextos | eu | `kubectl --context <contexto> get pods -A --no-headers \| awk '{print $4}' \| sort \| uniq -c` |
 | 8 | Freelens abre `celesta-prod-1` e `celesta-anj-prod-1` | Lucas | ok verbal |

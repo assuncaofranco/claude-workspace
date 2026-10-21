@@ -70,7 +70,12 @@ artefato, ou se perde. O resultado, não a ferramenta: o artefato é do time e n
 O revisor automático da fase de implementação **não** substitui o passo 13: ele lê diff, plano e spec,
 não a matriz contra a coleção nem a doc contra a resposta real.
 
-Uma fase do SDD por sessão, `/clear` entre elas. Cada uma relê o que precisa da fonte.
+`/clear` entre fases do SDD é escolha por ticket, não regra. **[nosso]** — o playbook não pede.
+Ticket pequeno e mecânico: manter o histórico, porque a sessão já leu o repositório e achou as
+armadilhas; o que o contexto puser a mais aparece no diff, que o `sdd-reviewer` e o passo 13 leem.
+Ticket grande, ou plano que discutiu alternativas descartadas: `/clear`, porque o contexto pesa em
+todo turno e a alternativa descartada pode voltar no código. Nos dois casos a fase relê a fonte (o
+Jira), nunca confia no chat. Decisão do Lucas, 2026-10-21 (CLS-1283).
 
 O passo 14 nunca é pulado, nem quando o ticket parece não ter ordem: quem faz o deploy não é o Lucas,
 e o que não estiver escrito não existe para quem aperta o botão.

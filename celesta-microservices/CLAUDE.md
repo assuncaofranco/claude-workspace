@@ -99,8 +99,8 @@ no serviço: o que ainda existir disso é legado, não fonte. Quem quer a spec l
 quem quer o plano lê a descrição da sub-task.
 
 Constantes que as skills e eu usamos: `sdd:` no `context.yaml`. Precisam dos connectors Atlassian,
-Notion (spec e split recusam sem ele) e GitHub. Uma fase por sessão, `/clear` entre elas: cada uma
-relê o que precisa do Jira, e a troca de modelo entre fases já descarta o cache.
+Notion (spec e split recusam sem ele) e GitHub. Cada fase relê o que precisa do Jira; se há
+`/clear` entre elas é escolha por ticket (`router.md`).
 
 Planejamento de épico multi-ticket continua fora das branches, em `tickets/<épico>/` — ver
 `rules/deliverables.md`. O split organiza um pai; o que atravessa vários pais é do épico.

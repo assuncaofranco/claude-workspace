@@ -27,8 +27,9 @@ session's assistant text in the transcript before guessing. If the ticket has
 
 ## Output
 
-Two lists, the same items in the same order: first in Portuguese, then in English. Nothing else —
-no prose report, no recap, no headers.
+Two lists, the same items in the same order: first in Portuguese, then in English, each under a
+bold `PT` / `EN` label. Nothing else, no prose report, no recap. The labels are not decoration:
+without them the English list reads as the Portuguese one repeated (2026-10-21).
 
 One bullet per theme, never per session: everything on the same ticket or epic is one line, all
 oncall alerts of the day are one line, and process changes made while working a ticket go inside

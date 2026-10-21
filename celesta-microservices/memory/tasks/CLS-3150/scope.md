@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 7c16fbf2-1a26-475a-8ca1-a2bb9c56e895
-  modified: 2026-10-20T15:13:01.537Z
+  modified: 2026-10-21T10:15:17.001Z
 ---
 
 Sub-task sem descrição do CLS-1283 (épico CLS-1277), atribuída ao Lucas. As irmãs (1624, 2485, 2759,
@@ -69,6 +69,39 @@ Próximo: `/sdd-implement CLS-3150`; depois planejar CLS-3904/3905/3906.
 fica (é o client de banco do Strapi). `_specs`/`_plans/CLS-2400.md` ficam. Verificar sempre com
 `build:force`, porque um `dist` velho ainda registra o plugin. Smoke = `GET /_health` + uma rota com
 bonus-list-picker, com e sem a env. Coleção de smoke ainda não existe em `tickets/CLS-1283/`.
+**Implementado em 2026-10-21:** commit `bcae650` na branch `CLS-3906` (sem push), label `sdd-implement`.
+Suíte 951/951, boot ok com e sem a env. O build do admin dá OOM local (exit 137, ~5,3 GB das outras
+stacks); por decisão do Lucas, quem cobre o `build:force` é o build da imagem no CI, sem derrubar as stacks.
+
+**2026-10-21:** coleção de smoke pronta em `tickets/CLS-1283/flipper-smoke/` (com `matrix.md` e `run.sh`),
+linha de base 6/6 verde. Achados nos planos: 3905 cita `GET /api/ping` sem token, mas a rota é `/ping` e
+exige token; 3906 pede uma página com campo bonus-list-picker, mas nenhum content type usa o campo.
+BO `/wallet/transactions` dá 500 local por `BIGQUERY_KEY` inválido (ambiente, não o ticket).
+
+**2026-10-21: CLS-3904 (BO) implementado**, branch `CLS-3904` a partir do master, não commitado; 7 arquivos, só deleções;
+`make test` 3165 verde, sdd-reviewer limpo em 2 rodadas. `make lint` do BO só olha PHP adicionado/modificado, então é vazio aqui.
+Falta a rota HTTP autenticada com e sem a env (smoke).
+
+**2026-10-21, gateway (CLS-3905):** plano escrito via `sdd-plan`, implementado, commit `ceaa01c40` na
+branch `CLS-3905`, **não pushado**; suite 2145 verde, reviewer sem achados, labels `sdd-plan` +
+`sdd-implement`. Smoke local: token e `/ping` 200 com e sem a env; `/wallet/balances` 502 por causa da
+wallet (vendor sem `BonusRollbackJob`, consertado na sessão da wallet), não do gateway.
+
+**2026-10-21, wallet (CLS-3150):** commit `6ce833e74` na branch `CLS-3150`, **não pushado**; suite 1692
+verde, `lint:container` ok, smoke `GET /api/wallet/transactions` 200 com e sem a env, reviewer sem achados
+na 1ª rodada. Para rodar o master local foi preciso `make build` (imagem `latest-dev` puxada tinha PHP 8.4,
+master exige 8.5.11) e renovar o token do `~/.composer/auth.json`. As branches `CLS-1283-*` vão precisar
+de `make init` de novo.
+
+**2026-10-21 ~11:10:** os 4 implementados e commitados, sem push: wallet `6ce833e74`, BO `e282e51b09`,
+gateway `ceaa01c40`, cms-v2 `bcae650`. Revisados: só remoções, grep zerado, sem atribuição. Coleção 7/7
+com e sem a env. Token do GitHub em `~/.composer/auth.json` estava expirado; renovado com `gh auth token`
+(backup `auth.json.bak-2026-10-21`). Falta: push + PRs, DI (passo 14), pergunta de preprod (15).
+**2026-10-21 ~11:15: PRs abertos** wallet #1917, backoffice #3267, gateway #1534, cms-v2 #141 (template do
+time, sem vazamento). DI nos campos do Jira das 4 sub-tasks (sem ordem; env no argocd só sai depois, sem
+rollback previsto) e completo em `tickets/CLS-1283/flipper-smoke/deployment-instructions.md`. CI verde
+na wallet e no BO; gateway e cms-v2 sem CI (o dev não dispara no próprio PR). Falta: mover os tickets no
+board (Lucas), passo 15 (preprod).
 
 **Why:** o objetivo é não deixar rastro do Flipper nos nossos MS; o que os outros times usam não muda.
 **How to apply:** próximo passo é `ticket-matrix`. Remoção pura, sem flag lida, então a matriz deve sair quase toda célula A.

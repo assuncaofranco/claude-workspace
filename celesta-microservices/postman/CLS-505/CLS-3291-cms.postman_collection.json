@@ -1,0 +1,1139 @@
+{
+  "info": {
+    "name": "CLS-3291 cms Symfony 7.4",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1 BO content tag",
+      "item": [
+        {
+          "name": "BO token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('runTag')) pm.collectionVariables.set('runTag', 'cls505-' + Date.now());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET domain (languages)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "const sec = d.secondaryLanguage ? (Array.isArray(d.secondaryLanguage) ? d.secondaryLanguage : [d.secondaryLanguage]) : [];",
+                  "const langs = [...new Set([d.language || 'en', ...sec].filter(Boolean))];",
+                  "pm.test('languages read', () => pm.expect(langs.length).to.be.above(0));",
+                  "pm.collectionVariables.set('primaryLang', langs[0]);",
+                  "pm.collectionVariables.set('langs', JSON.stringify(langs));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST content_tag",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_tag",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} tag\",\n  \"backgroundColor\": \"#ff0000\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('tagId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST content_tags (list) -> contains tag",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_tags",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"limit\": 100,\n  \"offset\": 0\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json(); const list = j.data || j;",
+                  "pm.test('tag listed', () => pm.expect(list.some(t => String(t.id) === String(pm.collectionVariables.get('tagId')))).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH content_tag",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_tag/{{tagId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} tag2\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('renamed', () => pm.expect(pm.response.json().name).to.eql(pm.collectionVariables.get('runTag') + ' tag2'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH unknown tag -> 404",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_tag/999999999",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"x\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 BO content block",
+      "item": [
+        {
+          "name": "POST content_block (with tag)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} cb\",\n  \"slug\": \"{{runTag}}-cb\",\n  \"visibility\": \"ROLE_USER\",\n  \"content\": {{cbContent}},\n  \"countries\": [],\n  \"segments\": [],\n  \"contentTagIds\": [{{tagId}}]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('cbId', pm.response.json().id);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const langs = JSON.parse(pm.collectionVariables.get('langs') || '[\"en\"]');",
+                  "const c = {}; langs.forEach(l => c[l] = 'cb ' + pm.collectionVariables.get('runTag') + ' ' + l);",
+                  "pm.collectionVariables.set('cbContent', JSON.stringify(c));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET content_block",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block/{{cbId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('same id', () => pm.expect(String(pm.response.json().id)).to.eql(String(pm.collectionVariables.get('cbId'))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT content_block enabled + visibility period",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block/{{cbId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} cb\",\n  \"slug\": \"{{runTag}}-cb\",\n  \"visibility\": \"ROLE_USER\",\n  \"content\": {{cbContent}},\n  \"countries\": [],\n  \"segments\": [],\n  \"status\": \"enabled\",\n  \"visibilityPeriod\": {\"fromDate\": \"2030-01-01 00:00:00\", \"toDate\": \"2030-02-01 00:00:00\"}\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('enabled', () => pm.expect(pm.response.json().status).to.eql('enabled'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH status disabled",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block/{{cbId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"disabled\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('disabled', () => pm.expect(pm.response.json().status).to.eql('disabled'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT invalid status -> 400",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block/{{cbId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} cb\",\n  \"slug\": \"{{runTag}}-cb\",\n  \"visibility\": \"ROLE_USER\",\n  \"content\": {{cbContent}},\n  \"countries\": [],\n  \"segments\": [],\n  \"status\": \"bogus\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST toDate before fromDate -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} cb-bad1\",\n  \"slug\": \"{{runTag}}-cb-bad1\",\n  \"visibility\": \"ROLE_USER\",\n  \"content\": {{cbContent}},\n  \"countries\": [],\n  \"segments\": [],\n  \"visibilityPeriod\": {\"fromDate\": \"2030-02-01 00:00:00\", \"toDate\": \"2030-01-01 00:00:00\"}\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('message', () => pm.expect(pm.response.text()).to.include('cannot be greater than the value of toDate'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST toDate without fromDate -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} cb-bad2\",\n  \"slug\": \"{{runTag}}-cb-bad2\",\n  \"visibility\": \"ROLE_USER\",\n  \"content\": {{cbContent}},\n  \"countries\": [],\n  \"segments\": [],\n  \"visibilityPeriod\": {\"fromDate\": null, \"toDate\": \"2030-01-01 00:00:00\"}\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('message', () => pm.expect(pm.response.text()).to.include('cannot be null when toDate is provided'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET unknown content_block -> 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block/999999999"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE content_block",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block/{{cbId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET deleted content_block -> 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block/{{cbId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE content_tag",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_tag/{{tagId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 BO terms and conditions (draft only, never publish on a shared domain)",
+      "item": [
+        {
+          "name": "GET terms_and_conditions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/terms_and_conditions"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST draft",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/terms_and_conditions",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": {{tcContent}}\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('tcId', pm.response.json().id);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const langs = JSON.parse(pm.collectionVariables.get('langs') || '[\"en\"]');",
+                  "const c = {}; langs.forEach(l => c[l] = 'QA draft, do not publish ' + pm.collectionVariables.get('runTag') + ' ' + l);",
+                  "pm.collectionVariables.set('tcContent', JSON.stringify(c));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT draft",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/terms_and_conditions/{{tcId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": {{tcContent}}\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const langs = JSON.parse(pm.collectionVariables.get('langs') || '[\"en\"]');",
+                  "const c = {}; langs.forEach(l => c[l] = 'QA draft v2, do not publish ' + pm.collectionVariables.get('runTag') + ' ' + l);",
+                  "pm.collectionVariables.set('tcContent', JSON.stringify(c));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT unknown -> 404",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/terms_and_conditions/999999999",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": {{tcContent}}\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST publish unknown -> 404",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/terms_and_conditions/publish/999999999"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4 BO custom email template",
+      "item": [
+        {
+          "name": "POST custom-email-template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/custom-email-template",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} cet\",\n  \"enabled\": true,\n  \"translations\": {{cetTranslations}}\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('cetId', pm.response.json().id);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const langs = JSON.parse(pm.collectionVariables.get('langs') || '[\"en\"]');",
+                  "const t = {}; langs.forEach(p => t[p] = {sender: 'no-reply@celesta.io', senderName: 'QA', subject: 'Hi {{player.first_name}}', content: '<p>' + pm.collectionVariables.get('runTag') + '</p>'});",
+                  "pm.collectionVariables.set('cetTranslations', JSON.stringify(t));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET custom-email-template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/custom-email-template/{{cetId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH name",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/custom-email-template/{{cetId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} cet2\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('renamed', () => pm.expect(pm.response.json().name).to.eql(pm.collectionVariables.get('runTag') + ' cet2'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET unknown -> 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/custom-email-template/999999999"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5 DEV-ONLY cms direct (no entry point): render, bulk render, send, publish",
+      "item": [
+        {
+          "name": "POST render",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{cmsUrl}}/api/domain/{{domainId}}/custom-email-template/{{cetId}}/render",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"playerId\": {{playerId}}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "const url = pm.variables.replaceIn(pm.request.url.toString());",
+                  "const m = url.match(/^https?:\\/\\/([^\\/:]+)(?::(\\d+))?([^?]*)/);",
+                  "const method = pm.request.method.toUpperCase();",
+                  "let data = method + m[1] + decodeURIComponent(m[3]);",
+                  "if (['POST','PUT','PATCH'].includes(method)) {",
+                  "  const body = (pm.request.body && pm.request.body.raw) ? pm.variables.replaceIn(pm.request.body.raw) : '';",
+                  "  data += CryptoJS.MD5(body).toString();",
+                  "}",
+                  "pm.request.headers.upsert({key: 'x-guard-secret', value: CryptoJS.HmacSHA256(data, pm.environment.get('guardKey')).toString()});",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST render/bulk",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{cmsUrl}}/api/domain/{{domainId}}/custom-email-template/{{cetId}}/render/bulk",
+            "body": {
+              "mode": "raw",
+              "raw": "[{\"playerId\": {{playerId}}}]"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('one result', () => pm.expect(pm.response.json()).to.have.lengthOf(1));"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "const url = pm.variables.replaceIn(pm.request.url.toString());",
+                  "const m = url.match(/^https?:\\/\\/([^\\/:]+)(?::(\\d+))?([^?]*)/);",
+                  "const method = pm.request.method.toUpperCase();",
+                  "let data = method + m[1] + decodeURIComponent(m[3]);",
+                  "if (['POST','PUT','PATCH'].includes(method)) {",
+                  "  const body = (pm.request.body && pm.request.body.raw) ? pm.variables.replaceIn(pm.request.body.raw) : '';",
+                  "  data += CryptoJS.MD5(body).toString();",
+                  "}",
+                  "pm.request.headers.upsert({key: 'x-guard-secret', value: CryptoJS.HmacSHA256(data, pm.environment.get('guardKey')).toString()});",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST send -> contact /emails",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{cmsUrl}}/api/domain/{{domainId}}/custom-email-template/{{cetId}}/send",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"playerId\": {{playerId}}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "const url = pm.variables.replaceIn(pm.request.url.toString());",
+                  "const m = url.match(/^https?:\\/\\/([^\\/:]+)(?::(\\d+))?([^?]*)/);",
+                  "const method = pm.request.method.toUpperCase();",
+                  "let data = method + m[1] + decodeURIComponent(m[3]);",
+                  "if (['POST','PUT','PATCH'].includes(method)) {",
+                  "  const body = (pm.request.body && pm.request.body.raw) ? pm.variables.replaceIn(pm.request.body.raw) : '';",
+                  "  data += CryptoJS.MD5(body).toString();",
+                  "}",
+                  "pm.request.headers.upsert({key: 'x-guard-secret', value: CryptoJS.HmacSHA256(data, pm.environment.get('guardKey')).toString()});",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST publish draft (locks unsigned players of the domain)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/terms_and_conditions/publish/{{tcId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6 BO cleanup",
+      "item": [
+        {
+          "name": "DELETE custom-email-template",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/custom-email-template/{{cetId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET deleted -> 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/custom-email-template/{{cetId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "BO_baseUrl",
+      "value": "http://localhost:84"
+    },
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:93"
+    },
+    {
+      "key": "domainId",
+      "value": "1"
+    },
+    {
+      "key": "cmsUrl",
+      "value": "http://localhost:94"
+    },
+    {
+      "key": "playerId",
+      "value": "1"
+    },
+    {
+      "key": "runTag",
+      "value": ""
+    },
+    {
+      "key": "BO_access_token",
+      "value": ""
+    },
+    {
+      "key": "primaryLang",
+      "value": ""
+    },
+    {
+      "key": "langs",
+      "value": ""
+    },
+    {
+      "key": "tagId",
+      "value": ""
+    },
+    {
+      "key": "cbContent",
+      "value": ""
+    },
+    {
+      "key": "cbId",
+      "value": ""
+    },
+    {
+      "key": "tcContent",
+      "value": ""
+    },
+    {
+      "key": "tcId",
+      "value": ""
+    },
+    {
+      "key": "cetTranslations",
+      "value": ""
+    },
+    {
+      "key": "cetId",
+      "value": ""
+    }
+  ]
+}

@@ -1,0 +1,919 @@
+{
+  "info": {
+    "name": "CLS-3288 game Symfony 7.4",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1 GW launch Relax game",
+      "item": [
+        {
+          "name": "Player token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"player\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"client_id\": \"{{oauth_client_id}}\",\n  \"client_secret\": \"{{oauth_client_secret}}\",\n  \"deviceInformation\": {\n    \"ip\": \"127.0.0.1\",\n    \"userAgent\": \"Mozilla/5.0\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('access_token', pm.response.json().access_token);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('runTag')) pm.collectionVariables.set('runTag', 'cls505-' + Date.now());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET player information",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/player/information"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "const id = j.id || j.playerId || j.customerId;",
+                  "pm.test('player id', () => pm.expect(id).to.not.be.undefined);",
+                  "pm.collectionVariables.set('playerId', String(id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST launch (real) -> cashiertoken",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/en/game/{{gameId}}/launch",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ip\": \"127.0.0.1\",\n  \"device\": \"desktop\",\n  \"lobbyUrl\": \"http://localhost\",\n  \"depositUrl\": \"http://localhost\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const m = pm.response.text().match(/ticket=([^&\"\\\\]+)/);",
+                  "pm.test('ticket in launch url', () => pm.expect(m).to.not.be.null);",
+                  "if (m) pm.collectionVariables.set('cashiertoken', decodeURIComponent(m[1]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1b LOCAL ONLY top up player (fixtures leave a negative balance)",
+      "item": [
+        {
+          "name": "BO token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('runTag')) pm.collectionVariables.set('runTag', 'cls505-' + Date.now());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST adjustment_up 500",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/wallet/transaction",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"adjustment_up\",\n  \"amount\": \"500\",\n  \"currency\": \"{{currency}}\",\n  \"note\": \"QA CLS-505\",\n  \"reason\": \"technical_issue\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 Relax webhooks: bet, win, bet + rollback (provider callback)",
+      "item": [
+        {
+          "name": "getBalance -> start balance",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{gameUrl}}/webhook/relax/getBalance",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerid\": \"{{playerId}}\",\n  \"cashiertoken\": \"{{cashiertoken}}\",\n  \"currency\": \"{{currency}}\",\n  \"gameid\": \"casino\",\n  \"gameref\": \"{{externalGameId}}\",\n  \"channel\": \"web\",\n  \"clientid\": \"\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('balance is a number', () => pm.expect(pm.response.json().balance).to.be.a('number'));",
+                  "pm.collectionVariables.set('balanceStart', pm.response.json().balance);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('txBase', pm.collectionVariables.get('txBase') || String(Date.now()));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "withdraw 10 (round A)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{gameUrl}}/webhook/relax/withdraw",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerid\": \"{{playerId}}\",\n  \"cashiertoken\": \"{{cashiertoken}}\",\n  \"currency\": \"{{currency}}\",\n  \"gameid\": \"casino\",\n  \"gameref\": \"{{externalGameId}}\",\n  \"channel\": \"web\",\n  \"clientid\": \"\",\n  \"txid\": \"{{txBase}}1\",\n  \"amount\": 10,\n  \"txtype\": \"withdraw\",\n  \"gamesessionid\": \"{{txBase}}A\",\n  \"ended\": false\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('balance is a number', () => pm.expect(pm.response.json().balance).to.be.a('number'));",
+                  "pm.test('betdistribution', () => pm.expect(pm.response.json().betdistribution).to.be.an('object'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "deposit 20 (round A, ended)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{gameUrl}}/webhook/relax/deposit",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerid\": \"{{playerId}}\",\n  \"cashiertoken\": \"{{cashiertoken}}\",\n  \"currency\": \"{{currency}}\",\n  \"gameid\": \"casino\",\n  \"gameref\": \"{{externalGameId}}\",\n  \"channel\": \"web\",\n  \"clientid\": \"\",\n  \"txid\": \"{{txBase}}2\",\n  \"amount\": 20,\n  \"txtype\": \"deposit\",\n  \"gamesessionid\": \"{{txBase}}A\",\n  \"ended\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('balance is a number', () => pm.expect(pm.response.json().balance).to.be.a('number'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "withdraw 10 again -> 403 already processed",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{gameUrl}}/webhook/relax/withdraw",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerid\": \"{{playerId}}\",\n  \"cashiertoken\": \"{{cashiertoken}}\",\n  \"currency\": \"{{currency}}\",\n  \"gameid\": \"casino\",\n  \"gameref\": \"{{externalGameId}}\",\n  \"channel\": \"web\",\n  \"clientid\": \"\",\n  \"txid\": \"{{txBase}}1\",\n  \"amount\": 10,\n  \"txtype\": \"withdraw\",\n  \"gamesessionid\": \"{{txBase}}A\",\n  \"ended\": false\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "withdraw 15 (round B)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{gameUrl}}/webhook/relax/withdraw",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerid\": \"{{playerId}}\",\n  \"cashiertoken\": \"{{cashiertoken}}\",\n  \"currency\": \"{{currency}}\",\n  \"gameid\": \"casino\",\n  \"gameref\": \"{{externalGameId}}\",\n  \"channel\": \"web\",\n  \"clientid\": \"\",\n  \"txid\": \"{{txBase}}3\",\n  \"amount\": 15,\n  \"txtype\": \"withdraw\",\n  \"gamesessionid\": \"{{txBase}}B\",\n  \"ended\": false\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('balance is a number', () => pm.expect(pm.response.json().balance).to.be.a('number'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "rollback round B bet",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{gameUrl}}/webhook/relax/rollback",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerid\": \"{{playerId}}\",\n  \"cashiertoken\": \"{{cashiertoken}}\",\n  \"currency\": \"{{currency}}\",\n  \"gameid\": \"casino\",\n  \"gameref\": \"{{externalGameId}}\",\n  \"channel\": \"web\",\n  \"clientid\": \"\",\n  \"txid\": \"{{txBase}}4\",\n  \"originaltxid\": \"{{txBase}}3\",\n  \"gamesessionid\": \"{{txBase}}B\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('balance is a number', () => pm.expect(pm.response.json().balance).to.be.a('number'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "getBalance -> start + 10",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{gameUrl}}/webhook/relax/getBalance",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerid\": \"{{playerId}}\",\n  \"cashiertoken\": \"{{cashiertoken}}\",\n  \"currency\": \"{{currency}}\",\n  \"gameid\": \"casino\",\n  \"gameref\": \"{{externalGameId}}\",\n  \"channel\": \"web\",\n  \"clientid\": \"\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('balance is a number', () => pm.expect(pm.response.json().balance).to.be.a('number'));",
+                  "pm.test('net +10 cents', () => pm.expect(pm.response.json().balance).to.eql(Number(pm.collectionVariables.get('balanceStart')) + 10));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "rollback unknown tx -> declined",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{gameUrl}}/webhook/relax/rollback",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerid\": \"{{playerId}}\",\n  \"cashiertoken\": \"{{cashiertoken}}\",\n  \"currency\": \"{{currency}}\",\n  \"gameid\": \"casino\",\n  \"gameref\": \"{{externalGameId}}\",\n  \"channel\": \"web\",\n  \"clientid\": \"\",\n  \"txid\": \"{{txBase}}5\",\n  \"originaltxid\": \"{{txBase}}999\",\n  \"gamesessionid\": \"{{txBase}}C\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('not 2xx', () => pm.expect(pm.response.code).to.be.at.least(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 BO game reads",
+      "item": [
+        {
+          "name": "BO token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('runTag')) pm.collectionVariables.set('runTag', 'cls505-' + Date.now());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET game",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/{{gameId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('same id', () => pm.expect(String(pm.response.json().id)).to.eql(String(pm.variables.get('gameId'))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET unknown game -> 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/999999999"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4 Free rounds grant + cancel (promotion -> game)",
+      "item": [
+        {
+          "name": "BO token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('runTag')) pm.collectionVariables.set('runTag', 'cls505-' + Date.now());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST reward-configuration free_rounds (Relax)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/reward-configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} fr\",\n  \"displayName\": \"{{runTag}} fr\",\n  \"type\": \"free_rounds\",\n  \"model\": \"winnings\",\n  \"offeringMethod\": \"manual\",\n  \"currency\": \"{{currency}}\",\n  \"validDuringDays\": 3,\n  \"claimingEvent\": \"direct\",\n  \"offerValidFor\": 2,\n  \"freeRoundConfiguration\": {\n    \"freeRoundsGameGateway\": \"{{gameGatewayId}}\",\n    \"freeRoundsGameStudio\": \"{{gameStudioId}}\",\n    \"gameIds\": [\n      {\n        \"id\": \"{{gameId}}\"\n      }\n    ],\n    \"amount\": 1\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('rcFrId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH enable",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/reward-configuration/{{rcFrId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"enabled\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST offer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/reward/bonus/{{rcFrId}}/offer",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"playerId\": \"{{playerId}}\",\n  \"freeRoundsRoundCount\": 3,\n  \"message\": \"QA CLS-505\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('offered', () => pm.expect(j.status).to.eql('offered'));",
+                  "pm.collectionVariables.set('bonusId', j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Player token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"player\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"client_id\": \"{{oauth_client_id}}\",\n  \"client_secret\": \"{{oauth_client_secret}}\",\n  \"deviceInformation\": {\n    \"ip\": \"127.0.0.1\",\n    \"userAgent\": \"Mozilla/5.0\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('access_token', pm.response.json().access_token);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('runTag')) pm.collectionVariables.set('runTag', 'cls505-' + Date.now());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GW GET /reward/bonuses -> find offered",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/reward/bonuses"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json(); const list = [j.bonus, j.bonuses, j.rewards, j.data, j].find(Array.isArray) || [];",
+                  "if (!list.length) console.log('reward bonuses keys', Object.keys(j));",
+                  "const want = String(pm.collectionVariables.get('bonusId'));",
+                  "const b = list.find(x => String(x.id) === want || String(x.id).endsWith('_' + want));",
+                  "pm.test('bonus listed', () => pm.expect(b).to.not.be.undefined);",
+                  "if (b) pm.collectionVariables.set('claimRewardId', String(b.id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GW claim -> game grant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/reward/bonuses/claim",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rewardIds\": [\n    \"{{claimRewardId}}\"\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "BO token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('runTag')) pm.collectionVariables.set('runTag', 'cls505-' + Date.now());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "BO cancel bonus -> game cancel",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/reward/bonus/{{bonusId}}/cancel",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"playerId\": \"{{playerId}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "BO_baseUrl",
+      "value": "http://localhost:84"
+    },
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:93"
+    },
+    {
+      "key": "domainId",
+      "value": "1"
+    },
+    {
+      "key": "gameUrl",
+      "value": "http://localhost:89"
+    },
+    {
+      "key": "currency",
+      "value": "EUR"
+    },
+    {
+      "key": "gameId",
+      "value": "6"
+    },
+    {
+      "key": "externalGameId",
+      "value": "421"
+    },
+    {
+      "key": "gameGatewayId",
+      "value": "4"
+    },
+    {
+      "key": "gameStudioId",
+      "value": "4"
+    },
+    {
+      "key": "runTag",
+      "value": ""
+    },
+    {
+      "key": "BO_access_token",
+      "value": ""
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "playerId",
+      "value": ""
+    },
+    {
+      "key": "cashiertoken",
+      "value": ""
+    },
+    {
+      "key": "txBase",
+      "value": ""
+    },
+    {
+      "key": "balanceStart",
+      "value": ""
+    },
+    {
+      "key": "rcFrId",
+      "value": ""
+    },
+    {
+      "key": "bonusId",
+      "value": ""
+    },
+    {
+      "key": "claimRewardId",
+      "value": ""
+    }
+  ]
+}

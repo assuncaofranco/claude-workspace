@@ -1,0 +1,608 @@
+{
+  "info": {
+    "name": "CLS-2851 Relax free spins cancel",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1 BO setup",
+      "item": [
+        {
+          "name": "BO token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST bonus_configuration (free_rounds, Relax)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} relax fr\",\n  \"displayName\": \"{{runTag}} relax fr\",\n  \"type\": \"free_rounds\",\n  \"model\": \"direct\",\n  \"offeringMethod\": \"manual\",\n  \"currency\": \"EUR\",\n  \"reason\": \"test\",\n  \"validDuringDays\": 3,\n  \"offerValidFor\": 2,\n  \"claimingEvent\": \"direct\",\n  \"freeRoundConfiguration\": {\n    \"freeRoundsGameGateway\": \"{{gameGatewayId}}\",\n    \"freeRoundsGameStudio\": \"{{gameStudioId}}\",\n    \"gameIds\": [\n      {\n        \"id\": \"{{gameId}}\"\n      }\n    ],\n    \"amount\": 1\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('rcFrId', pm.response.json().id);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('runTag')) pm.collectionVariables.set('runTag', 'qa2851-' + Date.now());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH enable",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configuration/{{rcFrId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"enabled\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('enabled', () => pm.expect(pm.response.json().status).to.eql('enabled'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "offer free_rounds (bonusA)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/bonus_configuration/{{rcFrId}}/offer",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"playerId\": \"{{playerId}}\",\n  \"freeRoundsRoundCount\": 3,\n  \"message\": \"QA CLS-2851\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('offered', () => pm.expect(j.status).to.eql('offered'));",
+                  "pm.collectionVariables.set('bonusA', j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "offer free_rounds (bonusB)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/bonus_configuration/{{rcFrId}}/offer",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"playerId\": \"{{playerId}}\",\n  \"freeRoundsRoundCount\": 3,\n  \"message\": \"QA CLS-2851\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('offered', () => pm.expect(j.status).to.eql('offered'));",
+                  "pm.collectionVariables.set('bonusB', j.id);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 GW player: session, claim",
+      "item": [
+        {
+          "name": "Player token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"player\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"client_id\": \"{{oauth_client_id}}\",\n  \"client_secret\": \"{{oauth_client_secret}}\",\n  \"deviceInformation\": {\n    \"ip\": \"127.0.0.1\",\n    \"userAgent\": \"Mozilla/5.0\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "launch Relax game (real) -> cashiertoken",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/en/game/{{gameId}}/launch",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ip\": \"127.0.0.1\",\n  \"device\": \"desktop\",\n  \"lobbyUrl\": \"http://localhost\",\n  \"depositUrl\": \"http://localhost\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const m = pm.response.text().match(/ticket=([^&\"\\\\]+)/);",
+                  "pm.test('ticket in launch url', () => pm.expect(m).to.not.be.null);",
+                  "if (m) pm.collectionVariables.set('cashiertoken', decodeURIComponent(m[1]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /bonuses",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/bonuses"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "const list = j.bonus || j;",
+                  "for (const [v, out] of [['bonusA','gwA'],['bonusB','gwB']]) {",
+                  "  const want = String(pm.collectionVariables.get(v));",
+                  "  const b = list.find(x => String(x.id) === want || String(x.id).endsWith('_' + want));",
+                  "  pm.test(v + ' listed', () => pm.expect(b).to.not.be.undefined);",
+                  "  if (b) pm.collectionVariables.set(out, String(b.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /bonuses/claim (A only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/bonuses/claim",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bonusIds\": [\n    \"{{gwA}}\"\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('claimed', () => pm.expect(pm.response.json()[0].status).to.eql('claimed'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 Relax webhook notifyFreespinsCancel (provider callback)",
+      "item": [
+        {
+          "name": "cancel claimed bonus A -> 200",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{gameUrl}}/webhook/relax/notifyFreespinsCancel",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"txid\": \"{{$timestamp}}\",\n  \"cashiertoken\": \"{{cashiertoken}}\",\n  \"gameref\": \"{{externalGameId}}\",\n  \"customerid\": \"{{playerId}}\",\n  \"freespinid\": 1,\n  \"promocode\": \"{{bonusA}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "repeat cancel A (Relax retry) -> 403 DAILY_TIME_LIMIT (pre-existing mapping)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{gameUrl}}/webhook/relax/notifyFreespinsCancel",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"txid\": \"{{$timestamp}}\",\n  \"cashiertoken\": \"{{cashiertoken}}\",\n  \"gameref\": \"{{externalGameId}}\",\n  \"customerid\": \"{{playerId}}\",\n  \"freespinid\": 1,\n  \"promocode\": \"{{bonusA}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('DAILY_TIME_LIMIT', () => pm.expect(pm.response.json().errorcode).to.eql('DAILY_TIME_LIMIT'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "offered bonus B, no grant -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{gameUrl}}/webhook/relax/notifyFreespinsCancel",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"txid\": \"{{$timestamp}}\",\n  \"cashiertoken\": \"{{cashiertoken}}\",\n  \"gameref\": \"{{externalGameId}}\",\n  \"customerid\": \"{{playerId}}\",\n  \"freespinid\": 1,\n  \"promocode\": \"{{bonusB}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('CUSTOM_ERROR', () => pm.expect(pm.response.json().errorcode).to.eql('CUSTOM_ERROR'));",
+                  "pm.test('message', () => pm.expect(pm.response.json().errormessage).to.eql('Unable to find free round grant'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "unknown promocode -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{gameUrl}}/webhook/relax/notifyFreespinsCancel",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"txid\": \"{{$timestamp}}\",\n  \"cashiertoken\": \"{{cashiertoken}}\",\n  \"gameref\": \"{{externalGameId}}\",\n  \"customerid\": \"{{playerId}}\",\n  \"freespinid\": 1,\n  \"promocode\": \"999999999\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('CUSTOM_ERROR', () => pm.expect(pm.response.json().errorcode).to.eql('CUSTOM_ERROR'));",
+                  "pm.test('message', () => pm.expect(pm.response.json().errormessage).to.eql('Unable to find free round grant'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "invalid token -> ACCESS_DENIED",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{gameUrl}}/webhook/relax/notifyFreespinsCancel",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"txid\": \"{{$timestamp}}\",\n  \"cashiertoken\": \"wrong_session_token\",\n  \"gameref\": \"{{externalGameId}}\",\n  \"customerid\": \"{{playerId}}\",\n  \"freespinid\": 1,\n  \"promocode\": \"{{bonusA}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('INVALID_TOKEN', () => pm.expect(pm.response.json().errorcode).to.eql('INVALID_TOKEN'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4 GW verify",
+      "item": [
+        {
+          "name": "Player token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"player\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"client_id\": \"{{oauth_client_id}}\",\n  \"client_secret\": \"{{oauth_client_secret}}\",\n  \"deviceInformation\": {\n    \"ip\": \"127.0.0.1\",\n    \"userAgent\": \"Mozilla/5.0\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /bonuses canceled: A canceled, B still offered",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/bonuses?statuses[]=canceled&statuses[]=offered"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const list = pm.response.json().bonus || pm.response.json();",
+                  "const a = list.find(x => String(x.id) === pm.collectionVariables.get('gwA'));",
+                  "const b = list.find(x => String(x.id) === pm.collectionVariables.get('gwB'));",
+                  "pm.test('A canceled', () => pm.expect(a && a.status).to.eql('canceled'));",
+                  "pm.test('B untouched (offered)', () => pm.expect(b && b.status).to.eql('offered'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "BO_baseUrl",
+      "value": "http://localhost:84"
+    },
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:93"
+    },
+    {
+      "key": "gameUrl",
+      "value": "http://localhost:89"
+    },
+    {
+      "key": "domainId",
+      "value": "1"
+    },
+    {
+      "key": "playerId",
+      "value": "1"
+    },
+    {
+      "key": "gameId",
+      "value": "6"
+    },
+    {
+      "key": "externalGameId",
+      "value": "421"
+    },
+    {
+      "key": "gameGatewayId",
+      "value": "4"
+    },
+    {
+      "key": "gameStudioId",
+      "value": "4"
+    },
+    {
+      "key": "runTag",
+      "value": ""
+    },
+    {
+      "key": "BO_access_token",
+      "value": ""
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "rcFrId",
+      "value": ""
+    },
+    {
+      "key": "bonusA",
+      "value": ""
+    },
+    {
+      "key": "bonusB",
+      "value": ""
+    },
+    {
+      "key": "gwA",
+      "value": ""
+    },
+    {
+      "key": "gwB",
+      "value": ""
+    },
+    {
+      "key": "cashiertoken",
+      "value": ""
+    }
+  ]
+}

@@ -81,15 +81,23 @@ shared_libraries:
     holds: fixtures compartilhadas entre serviços
 
 # ─────────────────────────────────────────────────────────────────────────────
-# SDD — cada serviço tem seu próprio layout; não assumir um pelo outro.
+# SDD — plugin celesta-engineering-playbook. Spec e plano moram no Jira, nunca
+# em arquivo. _specs/, _plans/ e .claude/commands/{spec,plan}.md são legado.
 # ─────────────────────────────────────────────────────────────────────────────
 sdd:
-  templates: .claude/commands/{spec,plan}.md      # na raiz do serviço
-  output:
-    celesta-promotion:  {spec: sdd/_specs/, plan: sdd/_plans/}
-    celesta-backoffice: {spec: _specs/, plan: _plans/}
-    celesta-gateway:    {spec: _specs/, plan: _plans/}
-  note: verificar o layout do próprio serviço via git log antes de criar o arquivo
+  plugin: celesta-engineering-playbook@celesta-claude-marketplace
+  jira: {site: celesta.atlassian.net, project: CLS, project_id: 10243}
+  spec: descrição do ticket pai                    # sdd-spec
+  plan: descrição da sub-task                      # sdd-plan
+  repo_field: customfield_11435                    # nome cru, ex. celesta-crm; texto livre, sem validação
+  order_link: {type: Blocks, id: 10000}            # inward bloqueia outward; sem ciclo
+  labels: {parent: sdd-spec, subtask: [sdd-split, sdd-plan, sdd-implement]}
+  branch: '<KEY>'                                  # chave crua da sub-task, ex. CLS-2967
+  commit: '<KEY>: descrição curta'                 # passa no regex de commit:
+  plan_gate: [Implementation Tasks, File Changes, Testing Strategy]   # o que o sdd-implement exige
+  connectors: [Atlassian, Notion, GitHub]          # spec e split recusam sem Notion
+  notion: [Team components, Product compendium]
+  service_desks: {O: infraestrutura, QAA: automação de QA}   # nunca sub-task, sempre request
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Portas de dev. Gateway e Backoffice são as ÚNICAS portas de entrada legítimas;

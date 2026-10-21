@@ -5,7 +5,7 @@ argument-hint: <mensagem do PagerDuty/Slack ou erro do Datadog>
 
 # oncall
 
-Entrada para qualquer alerta de produção: mensagem do PagerDuty, erro do Datadog, ou "acordei com isso aqui". **Não é ticket** — não passa por `ticket-understand`, `spec`, `plan` nem `ticket-code`.
+Entrada para qualquer alerta de produção: mensagem do PagerDuty, erro do Datadog, ou "acordei com isso aqui". **Não é ticket** — não passa por `ticket-understand`, pelas fases do SDD nem por `ticket-code`.
 
 A única pergunta que esta skill existe pra responder:
 

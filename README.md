@@ -26,7 +26,6 @@ de diretório**:
 | `commands/` | `global/skills/` |
 | `memory/` | `global/memory/` |
 | `shared/` | `celesta-microservices/shared/` |
-| `hooks/` | `celesta-microservices/hooks/` |
 | `postman/` | `celesta-microservices/postman/` |
 | `projects/<celesta>/memory/` | `celesta-microservices/memory/` |
 | `projects/<infra>/memory/` | `celesta-infra/memory/` |

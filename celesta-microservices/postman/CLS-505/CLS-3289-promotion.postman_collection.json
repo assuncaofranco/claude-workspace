@@ -1,0 +1,1595 @@
+{
+  "info": {
+    "name": "CLS-3289 promotion Symfony 7.4",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0 BO setup: segment",
+      "item": [
+        {
+          "name": "BO token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('runTag')) pm.collectionVariables.set('runTag', 'cls505-' + Date.now());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST segments -> pick one",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/segments",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"limit\": 50,\n  \"offset\": 0\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json(); const list = [j.data, j.segments, j].find(Array.isArray) || [];",
+                  "const s = list.find(x => !x.currency || x.currency === pm.variables.get('currency')) || list[0];",
+                  "pm.test('segment found', () => pm.expect(s).to.not.be.undefined);",
+                  "if (s) pm.collectionVariables.set('segmentId', s.id);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const pad = n => String(n).padStart(2, '0');",
+                  "const f = (d, t) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + (t ? ' ' + t : '');",
+                  "const day = n => { const d = new Date(); d.setDate(d.getDate() + n); return d; };",
+                  "pm.collectionVariables.set('startDate', f(day(1), '00:00'));",
+                  "pm.collectionVariables.set('startDay', f(day(1), '23:59'));",
+                  "pm.collectionVariables.set('endDate', f(day(60), '23:59'));",
+                  "pm.collectionVariables.set('finishDate', f(day(30), '23:59'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1 BO promotion tags",
+      "item": [
+        {
+          "name": "POST promotion-tag",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-tag",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} ptag\",\n  \"backgroundColor\": \"#FF0000\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('ptagId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST duplicate name -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-tag",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} ptag\",\n  \"backgroundColor\": \"#FF0000\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH promotion-tag",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-tag/{{ptagId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} ptag2\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH unknown -> 404",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-tag/999999999",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"x\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 BO reward configuration",
+      "item": [
+        {
+          "name": "POST manual free",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/reward-configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} rc free\",\n  \"type\": \"free\",\n  \"model\": \"direct\",\n  \"offeringMethod\": \"manual\",\n  \"currency\": \"{{currency}}\",\n  \"validDuringDays\": \"7\",\n  \"claimingEvent\": \"direct\",\n  \"offerAmount\": \"10\",\n  \"offerValidFor\": 14\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('rcId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/reward-configuration/{{rcId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('same id', () => pm.expect(String(pm.response.json().id)).to.eql(String(pm.collectionVariables.get('rcId'))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH enable",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/reward-configuration/{{rcId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"enabled\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('enabled', () => pm.expect(pm.response.json().status).to.eql('enabled'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET unknown -> 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/reward-configuration/999999999"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST automatic with segment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/reward-configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} rc auto\", \"type\": \"free\", \"model\": \"direct\", \"offeringMethod\": \"automatic\", \"currency\": \"{{currency}}\",\n  \"validDuringDays\": \"7\", \"claimingEvent\": \"direct\", \"offerAmount\": \"10\", \"recurrence\": \"always\", \"segmentIds\": [{\"id\": {{segmentId}}}]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('rcAutoId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST reward-configurations by segment -> contains it",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/reward-configurations",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"limit\": 100, \"offset\": 0, \"filter\": {\"segmentIds\": [{{segmentId}}]}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json(); const list = [j.data, j].find(Array.isArray) || [];",
+                  "const rc = list.find(x => String(x.id) === String(pm.collectionVariables.get('rcAutoId')));",
+                  "pm.test('listed by segment', () => pm.expect(rc).to.not.be.undefined);",
+                  "pm.test('segmentIds present', () => pm.expect(rc && (rc.segmentIds || rc.segments)).to.not.be.undefined);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST validDuringDays 400 -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/reward-configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} rc free\",\n  \"type\": \"free\",\n  \"model\": \"direct\",\n  \"offeringMethod\": \"manual\",\n  \"currency\": \"{{currency}}\",\n  \"validDuringDays\": \"400\",\n  \"claimingEvent\": \"direct\",\n  \"offerAmount\": \"10\",\n  \"offerValidFor\": 14\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST daily to before from -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/reward-configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} rc auto\", \"type\": \"free\", \"model\": \"direct\", \"offeringMethod\": \"automatic\", \"currency\": \"{{currency}}\",\n  \"validDuringDays\": \"7\", \"claimingEvent\": \"direct\", \"offerAmount\": \"10\", \"recurrence\": \"daily\", \"segmentIds\": [{\"id\": {{segmentId}}}], \"recurrenceDailyFrom\": \"18:00\", \"recurrenceDailyTo\": \"09:00\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST weekly to before from -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/reward-configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} rc auto\", \"type\": \"free\", \"model\": \"direct\", \"offeringMethod\": \"automatic\", \"currency\": \"{{currency}}\",\n  \"validDuringDays\": \"7\", \"claimingEvent\": \"direct\", \"offerAmount\": \"10\", \"recurrence\": \"weekly\", \"segmentIds\": [{\"id\": {{segmentId}}}], \"recurrenceWeeklyFrom\": {\"weekDay\": \"Friday\", \"time\": \"10:00\"}, \"recurrenceWeeklyTo\": {\"weekDay\": \"Monday\", \"time\": \"10:00\"}\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 BO promotion configuration + tags",
+      "item": [
+        {
+          "name": "POST promotion-configuration deposit_tier",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"{{runTag}} promo\", \"currency\": \"{{currency}}\", \"startDate\": \"{{startDate}}\", \"endDate\": \"{{endDate}}\", \"segmentIds\": [{{segmentId}}], \"engagementModel\": \"manual\", \"type\": \"deposit_tier\", \"engagementCode\": \"{{runTag}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('pcId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration/{{pcId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH name",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration/{{pcId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} promo2\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH invalid status -> 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration/{{pcId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"foo\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH unknown -> 404",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration/999999999",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"x\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT tags",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration/{{pcId}}/tags",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"tagIds\": [{{ptagId}}]}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT unknown tag -> 400",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration/{{pcId}}/tags",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tagIds\": [\n    999999999\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST refer_friend with half of a pair -> 400 (BothOrNone)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"{{runTag}} raf\", \"currency\": \"{{currency}}\", \"startDate\": \"{{startDate}}\", \"endDate\": \"{{endDate}}\", \"segmentIds\": [{{segmentId}}], \"engagementModel\": \"automatic\", \"type\": \"refer_friend\", \"options\": {\"targetBetAmount\": 10}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('BothOrNone message', () => pm.expect(pm.response.text()).to.include('must be provided together'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4 BO weekly schedule",
+      "item": [
+        {
+          "name": "POST weekly Mon/Wed/Fri",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration/{{pcId}}/schedule",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"firstOccurrence\": {\"startsAt\": \"{{startDate}}\", \"endsAt\": \"{{startDay}}\"}, \"recurrence\": {\"type\": \"weekly\", \"interval\": 1, \"daysOfWeek\": [\"Monday\", \"Wednesday\", \"Friday\"]}, \"finishCondition\": {\"type\": \"date\", \"finishDate\": \"{{finishDate}}\"}, \"engagementScope\": \"global\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('schId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST daysOfWeek empty -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration/{{pcId}}/schedule",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"firstOccurrence\": {\"startsAt\": \"{{startDate}}\", \"endsAt\": \"{{startDay}}\"}, \"recurrence\": {\"type\": \"weekly\", \"interval\": 1, \"daysOfWeek\": []}, \"finishCondition\": {\"type\": \"date\", \"finishDate\": \"{{finishDate}}\"}, \"engagementScope\": \"global\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('message', () => pm.expect(pm.response.text()).to.include('daysOfWeek must be set to at least one day'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST daysOfWeek Funday -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration/{{pcId}}/schedule",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"firstOccurrence\": {\"startsAt\": \"{{startDate}}\", \"endsAt\": \"{{startDay}}\"}, \"recurrence\": {\"type\": \"weekly\", \"interval\": 1, \"daysOfWeek\": [\"Funday\"]}, \"finishCondition\": {\"type\": \"date\", \"finishDate\": \"{{finishDate}}\"}, \"engagementScope\": \"global\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('message', () => pm.expect(pm.response.text()).to.include('daysOfWeek contains invalid values'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT weekly Tuesday",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration/{{pcId}}/schedule/{{schId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"firstOccurrence\": {\"startsAt\": \"{{startDate}}\", \"endsAt\": \"{{startDay}}\"}, \"recurrence\": {\"type\": \"weekly\", \"interval\": 1, \"daysOfWeek\": [\"Tuesday\"]}, \"finishCondition\": {\"type\": \"date\", \"finishDate\": \"{{finishDate}}\"}, \"engagementScope\": \"global\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE schedule",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration/{{pcId}}/schedule/{{schId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('2xx', () => pm.expect(pm.response.code).to.be.oneOf([200, 204]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5 BO reward aggregator",
+      "item": [
+        {
+          "name": "POST tier aggregator",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration/{{pcId}}/reward-aggregators",
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"type\": \"tier\",\n    \"options\": {\n      \"minAmount\": 10,\n      \"maxAmount\": 100\n    },\n    \"rewards\": []\n  }\n]"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json(); const a = Array.isArray(j) ? j[0] : j;",
+                  "pm.collectionVariables.set('agId', a.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH tier",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration/{{pcId}}/reward-aggregator/{{agId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"tier\",\n  \"options\": {\n    \"minAmount\": 10,\n    \"maxAmount\": 200\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE tier",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration/{{pcId}}/reward-aggregator/{{agId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('2xx', () => pm.expect(pm.response.code).to.be.oneOf([200, 204]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6 offer free bonus to player, GW lists it, BO cancels",
+      "item": [
+        {
+          "name": "Player token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"player\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"client_id\": \"{{oauth_client_id}}\",\n  \"client_secret\": \"{{oauth_client_secret}}\",\n  \"deviceInformation\": {\n    \"ip\": \"127.0.0.1\",\n    \"userAgent\": \"Mozilla/5.0\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('access_token', pm.response.json().access_token);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('runTag')) pm.collectionVariables.set('runTag', 'cls505-' + Date.now());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET player information",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/player/information"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('playerId', String(pm.response.json().id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "BO token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('runTag')) pm.collectionVariables.set('runTag', 'cls505-' + Date.now());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST offer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/reward/bonus/{{rcId}}/offer",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"playerId\": \"{{playerId}}\",\n  \"message\": \"QA CLS-505\",\n  \"amount\": 10\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('offered', () => pm.expect(j.status).to.eql('offered'));",
+                  "pm.collectionVariables.set('bonusId', j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Player token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"player\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"client_id\": \"{{oauth_client_id}}\",\n  \"client_secret\": \"{{oauth_client_secret}}\",\n  \"deviceInformation\": {\n    \"ip\": \"127.0.0.1\",\n    \"userAgent\": \"Mozilla/5.0\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('access_token', pm.response.json().access_token);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('runTag')) pm.collectionVariables.set('runTag', 'cls505-' + Date.now());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GW GET /reward/bonuses -> listed",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/reward/bonuses"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json(); const list = [j.bonus, j.bonuses, j.data, j].find(Array.isArray) || [];",
+                  "const want = String(pm.collectionVariables.get('bonusId'));",
+                  "pm.test('bonus listed', () => pm.expect(list.some(x => String(x.id) === want || String(x.id).endsWith('_' + want))).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "BO token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('runTag')) pm.collectionVariables.set('runTag', 'cls505-' + Date.now());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "BO cancel bonus",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/reward/bonus/{{bonusId}}/cancel",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"playerId\": \"{{playerId}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7 BO cleanup",
+      "item": [
+        {
+          "name": "DELETE manual rc",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/reward-configuration/{{rcId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE automatic rc",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/reward-configuration/{{rcAutoId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET deleted rc -> 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/reward-configuration/{{rcId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE promotion-tag",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-tag/{{ptagId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('2xx', () => pm.expect(pm.response.code).to.be.oneOf([200, 204]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "8 DEV-ONLY promotion direct: RecurrenceFormat (BO never sends a bad format)",
+      "item": [
+        {
+          "name": "POST weekly from \"Funday 10:00\" -> 400 format",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"{{runTag}} rf\", \"type\": \"free\", \"model\": \"direct\", \"offeringMethod\": \"automatic\", \"currency\": \"{{currency}}\", \"validDuringDays\": 7, \"claimingEvent\": \"direct\", \"offerAmount\": \"10\", \"segmentIds\": [{{segmentId}}], \"recurrence\": \"weekly\", \"recurrenceWeeklyFrom\": \"Funday 10:00\", \"recurrenceWeeklyTo\": \"Sunday 10:00\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('RecurrenceFormat message', () => pm.expect(pm.response.text()).to.include('Format not valid'));"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "const url = pm.variables.replaceIn(pm.request.url.toString());",
+                  "const m = url.match(/^https?:\\/\\/([^\\/:]+)(?::(\\d+))?([^?]*)/);",
+                  "const method = pm.request.method.toUpperCase();",
+                  "let data = method + m[1] + decodeURIComponent(m[3]);",
+                  "if (['POST','PUT','PATCH'].includes(method)) {",
+                  "  const body = (pm.request.body && pm.request.body.raw) ? pm.variables.replaceIn(pm.request.body.raw) : '';",
+                  "  data += CryptoJS.MD5(body).toString();",
+                  "}",
+                  "pm.request.headers.upsert({key: 'x-guard-secret', value: CryptoJS.HmacSHA256(data, pm.environment.get('guardKey')).toString()});",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST weekly from \"Monday\" without time -> 400 format",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"{{runTag}} rf\", \"type\": \"free\", \"model\": \"direct\", \"offeringMethod\": \"automatic\", \"currency\": \"{{currency}}\", \"validDuringDays\": 7, \"claimingEvent\": \"direct\", \"offerAmount\": \"10\", \"segmentIds\": [{{segmentId}}], \"recurrence\": \"weekly\", \"recurrenceWeeklyFrom\": \"Monday\", \"recurrenceWeeklyTo\": \"Sunday 10:00\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('RecurrenceFormat message', () => pm.expect(pm.response.text()).to.include('Format not valid'));"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "const url = pm.variables.replaceIn(pm.request.url.toString());",
+                  "const m = url.match(/^https?:\\/\\/([^\\/:]+)(?::(\\d+))?([^?]*)/);",
+                  "const method = pm.request.method.toUpperCase();",
+                  "let data = method + m[1] + decodeURIComponent(m[3]);",
+                  "if (['POST','PUT','PATCH'].includes(method)) {",
+                  "  const body = (pm.request.body && pm.request.body.raw) ? pm.variables.replaceIn(pm.request.body.raw) : '';",
+                  "  data += CryptoJS.MD5(body).toString();",
+                  "}",
+                  "pm.request.headers.upsert({key: 'x-guard-secret', value: CryptoJS.HmacSHA256(data, pm.environment.get('guardKey')).toString()});",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "BO_baseUrl",
+      "value": "http://localhost:84"
+    },
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:93"
+    },
+    {
+      "key": "domainId",
+      "value": "1"
+    },
+    {
+      "key": "currency",
+      "value": "EUR"
+    },
+    {
+      "key": "promotionUrl",
+      "value": "http://localhost:99"
+    },
+    {
+      "key": "runTag",
+      "value": ""
+    },
+    {
+      "key": "BO_access_token",
+      "value": ""
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "startDate",
+      "value": ""
+    },
+    {
+      "key": "startDay",
+      "value": ""
+    },
+    {
+      "key": "endDate",
+      "value": ""
+    },
+    {
+      "key": "finishDate",
+      "value": ""
+    },
+    {
+      "key": "segmentId",
+      "value": ""
+    },
+    {
+      "key": "ptagId",
+      "value": ""
+    },
+    {
+      "key": "rcId",
+      "value": ""
+    },
+    {
+      "key": "rcAutoId",
+      "value": ""
+    },
+    {
+      "key": "pcId",
+      "value": ""
+    },
+    {
+      "key": "schId",
+      "value": ""
+    },
+    {
+      "key": "agId",
+      "value": ""
+    },
+    {
+      "key": "playerId",
+      "value": ""
+    },
+    {
+      "key": "bonusId",
+      "value": ""
+    }
+  ]
+}

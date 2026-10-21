@@ -26,7 +26,7 @@ This is a **debate between colleagues**, not a report. Concretely:
 While reading the code in step 2, note the branch points you hit — type enums, offering methods, states, flags. Don't enumerate them here (that's `ticket-matrix`), just don't lose them.
 
 ## Handoff — do not recreate spec/plan here
-Each Celesta service already has its own `/spec` and `/plan` (or `_specs/`/`_plans/` equivalents) in that service's `.claude/commands/`. Once this conversation reaches alignment, run that service's own `/spec` and `/plan` — don't write a competing spec here. If you're not sure which convention a given service uses, check its own `.claude/commands/` before assuming `_specs/`/`_plans/` or `sdd/`.
+The project's SDD owns spec and plan (overlay: which skills, where they live). Don't write a competing spec here. What this conversation settles — business intent, decisions, out of scope — is input for the spec phase: hand it over in that phase's batched answers, so it lands in the spec instead of dying in the chat.
 
 ## Next
 Hand off to `ticket-matrix`.

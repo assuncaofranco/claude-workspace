@@ -1,0 +1,793 @@
+{
+  "info": {
+    "name": "CLS-2485 move bonus cleanup: SB rollback and BO cancel",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0 Precondition: player 1 withdrawable not negative",
+      "item": [
+        {
+          "name": "Player token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"player\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"client_id\": \"{{oauth_client_id}}\",\n  \"client_secret\": \"{{oauth_client_secret}}\",\n  \"deviceInformation\": {\n    \"ip\": \"127.0.0.1\",\n    \"userAgent\": \"Mozilla/5.0\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.environment.set('access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GW player balance (precondition)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/wallet/balances"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const eur = pm.response.json().balances.find(b => b.currency === 'EUR');",
+                  "const w = Number(eur ? eur.withdrawable : 0);",
+                  "pm.environment.set('fixAmount', w < 0 ? String(Math.ceil(-w) + 50) : '');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "BO token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.environment.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "BO adjustment_up if withdrawable is negative (wallet rejects claims otherwise)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/wallet/transaction",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"adjustment_up\",\n  \"amount\": \"{{fixAmount}}\",\n  \"currency\": \"EUR\",\n  \"note\": \"QA CLS-2485 precondition\",\n  \"reason\": \"payment_provider_issue\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('fixAmount')) pm.execution.skipRequest();"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1 BO setup",
+      "item": [
+        {
+          "name": "BO token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.environment.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST bonus_configuration (free, manual)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} free\",\n  \"displayName\": \"{{runTag}} free\",\n  \"type\": \"free\",\n  \"model\": \"wager\",\n  \"wageringMultiplier\": \"5.00\",\n  \"maxWinMultiplier\": \"10\",\n  \"offeringMethod\": \"manual\",\n  \"currency\": \"EUR\",\n  \"reason\": \"test\",\n  \"validDuringDays\": 3,\n  \"offerValidFor\": 2,\n  \"claimingEvent\": \"direct\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.environment.set('rcId', pm.response.json().id);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('runTag')) { const t = Date.now(); pm.environment.set('runTag', 'qa2485-' + t); pm.environment.set('roundId', String(Math.floor(t / 1000))); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH enable",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configuration/{{rcId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"enabled\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('enabled', () => pm.expect(pm.response.json().status).to.eql('enabled'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "offer free bonus bonusR (10 EUR)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/bonus_configuration/{{rcId}}/offer",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"playerId\": \"{{playerId}}\",\n  \"amount\": 10,\n  \"message\": \"QA CLS-2485\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('offered', () => pm.expect(j.status).to.eql('offered'));",
+                  "pm.environment.set('bonusR', j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "offer free bonus bonusC (5 EUR)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/bonus_configuration/{{rcId}}/offer",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"playerId\": \"{{playerId}}\",\n  \"amount\": 5,\n  \"message\": \"QA CLS-2485\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('offered', () => pm.expect(j.status).to.eql('offered'));",
+                  "pm.environment.set('bonusC', j.id);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 GW player claims both",
+      "item": [
+        {
+          "name": "Player token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"player\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"client_id\": \"{{oauth_client_id}}\",\n  \"client_secret\": \"{{oauth_client_secret}}\",\n  \"deviceInformation\": {\n    \"ip\": \"127.0.0.1\",\n    \"userAgent\": \"Mozilla/5.0\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.environment.set('access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /bonuses",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/bonuses"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const list = pm.response.json().bonus || pm.response.json();",
+                  "for (const [v, out] of [['bonusR','gwR'],['bonusC','gwC']]) {",
+                  "  const want = String(pm.environment.get(v));",
+                  "  const b = list.find(x => String(x.id) === want || String(x.id).endsWith('_' + want));",
+                  "  pm.test(v + ' listed', () => pm.expect(b).to.not.be.undefined);",
+                  "  if (b) pm.environment.set(out, String(b.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /bonuses/claim (R and C)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/bonuses/claim",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bonusIds\": [\n    \"{{gwR}}\",\n    \"{{gwC}}\"\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('both claimed', () => pm.expect(pm.response.json().map(b => b.status)).to.eql(['claimed','claimed']));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /wallet/balances -> bonusBalance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/wallet/balances"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const eur = pm.response.json().balances.find(b => b.currency === 'EUR');",
+                  "pm.test('has bonus balance', () => pm.expect(eur.bonus).to.be.above(0));",
+                  "pm.environment.set('bonusBalance', String(eur.bonus));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 DEV-ONLY sportsbook bonus bet (wallet, SB provider side)",
+      "item": [
+        {
+          "name": "POST sb/bonus-bet the whole bonus balance",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{walletUrl}}/api/domain/{{domainId}}/wallet/{{playerId}}/sb/bonus-bet",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": \"{{bonusBalance}}\",\n  \"currency\": \"EUR\",\n  \"providerTransactionId\": \"{{runTag}}-bet\",\n  \"roundId\": \"{{roundId}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('bonus balance spent', () => pm.expect(pm.response.json().balance.bonusBalance).to.eql(0));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4 BO verify played (after promotion consumed Depleted)",
+      "item": [
+        {
+          "name": "BO token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.environment.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET bonuses: R and C played",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonuses?filter[ownerIds][]={{playerId}}&filter[bonusModelIds][]={{rcId}}&filter[statuses][]=offered&filter[statuses][]=claimed&filter[statuses][]=played&filter[statuses][]=canceled&limit=50"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const list = pm.response.json();",
+                  "const st = v => (list.find(x => String(x.id) === String(pm.environment.get(v))) || {}).status;",
+                  "pm.test('bonusR is played', () => pm.expect(st('bonusR')).to.eql('played'));",
+                  "pm.test('bonusC is played', () => pm.expect(st('bonusC')).to.eql('played'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5 DEV-ONLY sportsbook rollback (wallet, SB provider side)",
+      "item": [
+        {
+          "name": "POST sb/rollback the bonus bet",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{walletUrl}}/api/domain/{{domainId}}/wallet/{{playerId}}/sb/rollback/{{runTag}}-bet",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": \"{{bonusBalance}}\",\n  \"providerTransactionId\": \"{{runTag}}-rb\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.response.text());",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('bonus balance restored', () => pm.expect(String(pm.response.json().balance.bonusBalance)).to.eql(pm.environment.get('bonusBalance')));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6 BO verify claimed again (after promotion consumed Restored)",
+      "item": [
+        {
+          "name": "BO token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.environment.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET bonuses: R and C claimed",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonuses?filter[ownerIds][]={{playerId}}&filter[bonusModelIds][]={{rcId}}&filter[statuses][]=offered&filter[statuses][]=claimed&filter[statuses][]=played&filter[statuses][]=canceled&limit=50"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const list = pm.response.json();",
+                  "const st = v => (list.find(x => String(x.id) === String(pm.environment.get(v))) || {}).status;",
+                  "pm.test('bonusR is claimed', () => pm.expect(st('bonusR')).to.eql('claimed'));",
+                  "pm.test('bonusC is claimed', () => pm.expect(st('bonusC')).to.eql('claimed'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7 BO cancel bonus C",
+      "item": [
+        {
+          "name": "BO token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.environment.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST player/{p}/bonus/{C}/cancel",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/bonus/{{bonusC}}/cancel",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"playerId\": \"{{playerId}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('canceled', () => pm.expect(pm.response.json().status).to.eql('canceled'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET bonuses: C canceled, R still claimed",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonuses?filter[ownerIds][]={{playerId}}&filter[bonusModelIds][]={{rcId}}&filter[statuses][]=offered&filter[statuses][]=claimed&filter[statuses][]=played&filter[statuses][]=canceled&limit=50"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const list = pm.response.json();",
+                  "const st = v => (list.find(x => String(x.id) === String(pm.environment.get(v))) || {}).status;",
+                  "pm.test('bonusC is canceled', () => pm.expect(st('bonusC')).to.eql('canceled'));",
+                  "pm.test('bonusR is claimed', () => pm.expect(st('bonusR')).to.eql('claimed'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "BO_baseUrl",
+      "value": "http://localhost:84"
+    },
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:93"
+    },
+    {
+      "key": "walletUrl",
+      "value": "http://localhost:88"
+    },
+    {
+      "key": "domainId",
+      "value": "1"
+    },
+    {
+      "key": "playerId",
+      "value": "1"
+    },
+    {
+      "key": "runTag",
+      "value": ""
+    },
+    {
+      "key": "roundId",
+      "value": ""
+    },
+    {
+      "key": "BO_access_token",
+      "value": ""
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "rcId",
+      "value": ""
+    },
+    {
+      "key": "bonusR",
+      "value": ""
+    },
+    {
+      "key": "bonusC",
+      "value": ""
+    },
+    {
+      "key": "gwR",
+      "value": ""
+    },
+    {
+      "key": "gwC",
+      "value": ""
+    },
+    {
+      "key": "bonusBalance",
+      "value": ""
+    }
+  ]
+}

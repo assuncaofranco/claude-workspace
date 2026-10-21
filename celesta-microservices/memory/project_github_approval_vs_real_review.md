@@ -5,12 +5,14 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 662bddd6-2b1f-4f08-838f-27648f0a4cf5
-  modified: 2026-09-23T09:04:22.886Z
+  modified: 2026-10-12T06:29:04.311Z
 ---
 
 Na Celesta o desenvolvedor **não pode rodar o CI no próprio PR**. A pipeline só dispara com uma
-aprovação, então Lucas pede a um colega que aprove — e essa aprovação existe para destravar o CI, não
-porque alguém leu o código.
+aprovação, então os devs aprovam os PRs uns dos outros — e essa aprovação existe para destravar o CI,
+não porque alguém leu o código. Vale nos dois sentidos: nos PRs do Lucas e nos que ele revisa
+(CLS-3290, 2026-10-12: duas aprovações e um review dele DISMISSED, nenhum era review). Toda aprovação
+anterior ao review do board é ignorada, não reportada.
 
 **O review de verdade começa quando ele move o ticket para _Review_ no board do Jira.** É outro momento,
 com outra pessoa, e é o que vale.

@@ -72,7 +72,7 @@ Primeira vez na vida (não por turno): instalar e logar Datadog, AWS, Slack, Pag
 celular e configurar a notificação do PagerDuty.
 
 **Gap conhecido, não bloqueia:** a fila `segment-balance.fifo` vive na conta `954607206481`
-(quanta-aws), que nenhum perfil alcança. Só pelo console.
+(quanta-aws), que nenhum perfil alcança. Só pelo console, entrando com o **número da conta** e não com o alias: o alias `quanta-aws` mudou em 2026-10-08, e com ele o login dá "authentication failed" mesmo com a senha certa. O Datadog chama essa conta de `celesta-legacy` e tem as métricas `aws.sqs.*` dela, então é por ele. A fila `celesta-prod-memberzone.fifo` (do CRM) também mora lá.
 
 ## Checklist de fim
 
@@ -90,6 +90,14 @@ Casar o alerta aqui **antes** de abrir arquivo. Arquivos em `memory/oncall/`.
 | `SQS Messages Visible above 1k`, `segment-balance.fifo` | spike de fila | reportar; drena sozinho | `2026-08-29-celesta-segment.md` |
 | healthcheck Dagster 089, sub_balance de bônus sem bonus no promotion | perda no sync forward | reportar; resync em horário comercial | `2026-09-01-celesta-wallet-promotion.md` |
 | `Celesta Game Go Less than 10 hits/sec` → NO DATA | dependência externa (Quanta `gamelauncher/status`) | reportar à Quanta | `2026-09-04-celesta-game-go.md` |
+| `Celesta ETL BI Latency is above 20 Minutes`, `reward_bonus` / `segment_player` | ruído conhecido; os dois recarregam a tabela inteira. segment_player bate no limite de 1140s em parte das execuções (intermitente, ver a UI do Dagster) (também dispara "error rate breached 3.0"); fix do reward_bonus no CLS-3113 | reportar; dispara toda noite até o CLS-3113 | `2026-10-02-celesta-etl.md` |
+| `Celesta Rundeck Error on Job`, `terminate_long-running_mongodb_operations` | ruído; job roda a cada minuto, monitor soma 6h | conferir no Rundeck se foi isolada; reportar | `2026-10-05-celesta-rundeck.md` |
+| `SQS Messages Visible above 1k`, `celesta-prod-memberzone.fifo` (CRM) | spike de fila; segmento gigante no BO → bulk no ES do CRM a 100% de CPU | reportar; drena sozinho. Olhar o CPU do ES `es-v2-prod-memberzone` antes dos workers | `2026-10-08-celesta-crm-memberzone-sqs.md` |
+| `Celesta Game Command Job above 1.0 Errors`, `game:big-winner`, `setFirstName ... null given` | contrato do CRM: nome opcional no cadastro não-ANJ (CLS-1837), game exige string | reportar; resolve sozinho quando o jogador completa o cadastro | `2026-10-08-celesta-game-big-winner.md` |
+| Error Tracking `celesta-backoffice` `log_count`, 500 de `activity /user-activities/aggregate` | lentidão conhecida: aggregate do activity passa de ~20 s e dá 500; issue desde v1.1331 | reportar; candidato a ticket na query de count do activity | `2026-10-13-celesta-backoffice-logs-count.md` |
+| `Game-Go TG ELB above 120ms` / `Game TG ELB above 225ms` / PD `Game Go latency above 95ms` | PreferClose (CEL-9484) concentra o tráfego da 1a em 2 pods da wallet, e o descheduler `LowNodeUtilization` despeja esses pods a cada 3 min; lento só numa AZ, em loop | corrigir: suspender o descheduler via commit no celesta-argocd. Checar `target_response_time.p50 by {availabilityzone}` e `service:descheduler "Evicted pod"` | `2026-10-17-celesta-game-go.md` |
+| `Big Query scheduled query failed (Celesta)` (P4 no DD, chega P1 no PD) | dependência externa; `status:unavailable` = transitório do GCP. Erro, SQL e destino ficam no console: BigQuery → Scheduled queries (Lucas tem acesso desde 20/10) | reportar; conferir a próxima execução horária. `6aad1f51` = tabela de bônus, a execução seguinte cobre (sem backfill, Ivan 20/10) | `2026-10-19-celesta-bigquery.md` |
+| `Celesta Scenario RDS below 10% Freeable Memory` | performance_schema crescendo por IP de cliente (cron a cada minuto = pod novo = IP novo); blue/green só reseta, volta em ~9 dias. Expedite CLS-3377 | reportar; vigiar `SwapUsage` e latência | `2026-10-03-celesta-scenario-rds.md` |
 
 Padrões de calendário e fornecedor:
 - **Dia 29 do mês** → spike na fila do segment (maio e agosto). Causa em aberto.

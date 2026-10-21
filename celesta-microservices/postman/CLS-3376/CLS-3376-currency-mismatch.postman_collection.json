@@ -1,0 +1,400 @@
+{
+  "info": {
+    "name": "CLS-3376 query currency vs body currency on bonus-transaction",
+    "description": "Wallet only (DEV-ONLY, guard signed). Each assertion that passes reproduces the bug; 10/11 are the control. Run: newman run <file> --env-var guardKey=<GUARD_KEY>. Without guardKey the request goes unsigned (only works with GUARD_ENABLED=0)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.collectionVariables.get('ownerId')) {",
+          "  ['ownerId', 'bonusA', 'bonusB', 'bonusC'].forEach(k => pm.collectionVariables.set(k, String(900000000 + Math.floor(Math.random() * 99999999))));",
+          "}",
+          "const crypto = require('crypto-js');",
+          "const url = pm.variables.replaceIn(pm.request.url.toString());",
+          "const m = url.match(/^https?:\\/\\/([^\\/:]+)(?::(\\d+))?([^?]*)/);",
+          "const guardKey = String(pm.variables.get('guardKey') || '');",
+          "if (guardKey && m && ['88','99','89'].includes(m[2] || '')) {",
+          "  const method = pm.request.method.toUpperCase();",
+          "  let data = method + m[1] + decodeURIComponent(m[3]);",
+          "  if (['POST','PUT','PATCH'].includes(method)) {",
+          "    const body = (pm.request.body && pm.request.body.raw) ? pm.variables.replaceIn(pm.request.body.raw) : '';",
+          "    data += crypto.MD5(body).toString();",
+          "  }",
+          "  pm.request.headers.upsert({ key: 'x-guard-secret', value: crypto.HmacSHA256(data, guardKey).toString() });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "walletUrl",
+      "value": "http://localhost:88"
+    },
+    {
+      "key": "guardKey",
+      "value": ""
+    },
+    {
+      "key": "domainId",
+      "value": "1"
+    },
+    {
+      "key": "ownerId",
+      "value": ""
+    },
+    {
+      "key": "bonusA",
+      "value": ""
+    },
+    {
+      "key": "bonusB",
+      "value": ""
+    },
+    {
+      "key": "bonusC",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "00. setup: player has no wallet",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const cur = pm.response.code === 200 ? pm.response.json().map(w => w.currency).sort() : [];",
+              "pm.test('no wallet yet', () => pm.expect(cur).to.eql([]));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{walletUrl}}/api/domain/{{domainId}}/wallets/{{ownerId}}"
+      }
+    },
+    {
+      "name": "01. claim bonus A (USD) with ?currency=EUR",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200, accepted', () => pm.response.to.have.status(200));",
+              "pm.test('sub_balance is USD', () => pm.expect(pm.response.json().currency).to.eql('USD'));",
+              "pm.collectionVariables.set('subA1', pm.response.json().id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"action\":\"claimed\",\"bonusId\":{{bonusA}},\"currency\":\"USD\",\"model\":\"wager\",\"amount\":\"10.00\"}"
+        },
+        "url": "{{walletUrl}}/api/domain/{{domainId}}/wallet/{{ownerId}}/bonus-transaction?currency=EUR"
+      }
+    },
+    {
+      "name": "02. wallets: only EUR was created, no USD wallet",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const cur = pm.response.code === 200 ? pm.response.json().map(w => w.currency).sort() : [];",
+              "pm.test('wallets = [EUR], the USD sub_balance lives in EUR', () => pm.expect(cur).to.eql(['EUR']));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{walletUrl}}/api/domain/{{domainId}}/wallets/{{ownerId}}"
+      }
+    },
+    {
+      "name": "03. claim bonus A again with ?currency=GBP",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200, accepted', () => pm.response.to.have.status(200));",
+              "pm.test('new sub_balance, not the one from 01', () => pm.expect(pm.response.json().id).to.not.eql(pm.collectionVariables.get('subA1')));",
+              "pm.collectionVariables.set('subA2', pm.response.json().id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"action\":\"claimed\",\"bonusId\":{{bonusA}},\"currency\":\"USD\",\"model\":\"wager\",\"amount\":\"10.00\"}"
+        },
+        "url": "{{walletUrl}}/api/domain/{{domainId}}/wallet/{{ownerId}}/bonus-transaction?currency=GBP"
+      }
+    },
+    {
+      "name": "04. claim bonus A again, correct request (no query)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200, accepted', () => pm.response.to.have.status(200));",
+              "pm.test('third sub_balance for the same bonus', () => { const id = pm.response.json().id; pm.expect(id).to.not.eql(pm.collectionVariables.get('subA1')); pm.expect(id).to.not.eql(pm.collectionVariables.get('subA2')); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"action\":\"claimed\",\"bonusId\":{{bonusA}},\"currency\":\"USD\",\"model\":\"wager\",\"amount\":\"10.00\"}"
+        },
+        "url": "{{walletUrl}}/api/domain/{{domainId}}/wallet/{{ownerId}}/bonus-transaction"
+      }
+    },
+    {
+      "name": "05. bonus A information: claimed 3 times",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('3 entries for one bonus', () => pm.expect(pm.response.json().length).to.eql(3));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"bonusIds\":[{{bonusA}}],\"ownerIds\":[{{ownerId}}]}"
+        },
+        "url": "{{walletUrl}}/api/domain/{{domainId}}/bonuses/information"
+      }
+    },
+    {
+      "name": "06. claim bonus B (USD) with invalid ?currency=ZZZ",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200, accepted, falls back to the oldest wallet', () => pm.response.to.have.status(200));",
+              "pm.test('sub_balance is USD', () => pm.expect(pm.response.json().currency).to.eql('USD'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"action\":\"claimed\",\"bonusId\":{{bonusB}},\"currency\":\"USD\",\"model\":\"wager\",\"amount\":\"10.00\"}"
+        },
+        "url": "{{walletUrl}}/api/domain/{{domainId}}/wallet/{{ownerId}}/bonus-transaction?currency=ZZZ"
+      }
+    },
+    {
+      "name": "07. wallets: EUR, GBP, USD (no ZZZ)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const cur = pm.response.code === 200 ? pm.response.json().map(w => w.currency).sort() : [];",
+              "pm.test('wallets = [EUR, GBP, USD]', () => pm.expect(cur).to.eql(['EUR', 'GBP', 'USD']));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{walletUrl}}/api/domain/{{domainId}}/wallets/{{ownerId}}"
+      }
+    },
+    {
+      "name": "08. refund bonus A, correct request (body USD)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200, refunded', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"action\":\"refund\",\"bonusId\":{{bonusA}},\"currency\":\"USD\"}"
+        },
+        "url": "{{walletUrl}}/api/domain/{{domainId}}/wallet/{{ownerId}}/bonus-transaction"
+      }
+    },
+    {
+      "name": "09. bonus A information after refund: EUR and GBP copies still active",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const bal = pm.response.json().map(b => b.totalBalance).sort();",
+              "pm.test('only one copy refunded (balance 0), EUR and GBP copies keep 10', () => pm.expect(bal).to.eql([0, 10, 10]));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"bonusIds\":[{{bonusA}}],\"ownerIds\":[{{ownerId}}]}"
+        },
+        "url": "{{walletUrl}}/api/domain/{{domainId}}/bonuses/information"
+      }
+    },
+    {
+      "name": "10. control: claim bonus C correct request",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200', () => pm.response.to.have.status(200));",
+              "pm.collectionVariables.set('subC', pm.response.json().id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"action\":\"claimed\",\"bonusId\":{{bonusC}},\"currency\":\"USD\",\"model\":\"wager\",\"amount\":\"10.00\"}"
+        },
+        "url": "{{walletUrl}}/api/domain/{{domainId}}/wallet/{{ownerId}}/bonus-transaction"
+      }
+    },
+    {
+      "name": "11. control: claim bonus C again, same request",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('idempotent when query and body agree: same sub_balance', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('subC')));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"action\":\"claimed\",\"bonusId\":{{bonusC}},\"currency\":\"USD\",\"model\":\"wager\",\"amount\":\"10.00\"}"
+        },
+        "url": "{{walletUrl}}/api/domain/{{domainId}}/wallet/{{ownerId}}/bonus-transaction"
+      }
+    }
+  ]
+}

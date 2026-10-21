@@ -35,6 +35,13 @@ acesso, ele roda **antes** — e uma exceção genérica não é a exceção de 
 listener de segurança do framework nunca a vê e ela vira 500 em vez do 403 normal. Mesma forma de
 `match`, resposta correta oposta.
 
+**Consumidor que espera outro formato: medir o estrago, não só notar a diferença.** No CLS-1546 vi
+que a aba de logs do cenário esperava uma lista e ia receber um objeto, e chamei de "renderiza
+errado". O formatter rodava direto no render da tabela, com `data?.map` sobre um objeto: era
+`TypeError` derrubando a aba inteira assim que o primeiro log chegasse. O review independente pegou.
+Antes de classificar o impacto, abrir onde o consumidor é chamado e ver se a falha fica isolada ou
+leva a tela junto.
+
 ## Entrada do usuário
 
 **Desestruturar `explode()` sobre entrada do usuário é um 500 esperando acontecer.**
@@ -90,6 +97,11 @@ PR.** Num caso real, `gh pr diff <B> --name-only` listou controller, teste, spec
 ticket. Mergear master na branch mais baixa primeiro, depois cada uma na de cima, e conferir com
 `gh pr diff --name-only` antes de pedir review. Merge-base correto **não** pega isso — o vazamento é
 o master assimétrico, não o empilhamento.
+
+**Afirmação sobre outro repositório se confere em `origin/master`, não no checkout local.** No CLS-1546
+afirmei que o activity não lia `company_id` buscando num clone parado havia dois meses, numa branch
+antiga. Na master ele era coluna e filtro. `git fetch` e `git grep <padrão> origin/master` no repo
+consultado, antes de escrever "ninguém consome".
 
 ## Testes e documentação
 

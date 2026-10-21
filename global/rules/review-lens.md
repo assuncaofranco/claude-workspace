@@ -43,6 +43,19 @@ está presa à versão que o lock resolveu e pode estar atrás do repositório.
 O caminho canônico do projeto fica no overlay dele. O cache local serve para consulta rápida; a
 citação no comentário é sempre a fonte.
 
+## Código certo, doc divergente: mensagem, não reprovação
+
+Quando o código está correto e o único problema é a spec, o plano ou outra doc não bater com ele, o
+desfecho é uma mensagem ao autor pedindo a correção. O ticket **não** volta no board (na Celesta,
+mover para Ready), porque isso é a reprovação formal e fica para defeito no que roda.
+
+**Por quê:** decidido no review do CLS-3290 (2026-10-12). O último commit corrigia o OpenAPI para
+destravar o Proteus, correção certa, mas o critério de aceitação ainda dizia que o OpenAPI não mudava.
+Reprovar formalmente por isso pesa o mesmo que um bug, e não é.
+
+**Como aplicar:** ao fechar o review, separar os achados em dois grupos e dizer qual desfecho cada um
+pede. Se só sobrou divergência de doc, propor a mensagem, não a reprovação.
+
 ## Ordem
 
 Intenção antes de código; matriz antes de qualidade. Um achado de qualidade num caminho que a matriz

@@ -8,7 +8,7 @@ domínio e prefixos de commit estão todos no `context.yaml` — é ele que os s
 
 Contexto compartilhado: [arquitetura](shared/architecture-patterns.md) ·
 [padrões de código](shared/coding-standards.md) · [estratégia de teste](shared/testing-strategy.md) ·
-[referência de Postman](postman-reference.md)
+[referência de Postman](postman-reference.md) · [Datadog: logs × traces, prod-2](datadog-reference.md)
 
 ---
 
@@ -19,8 +19,7 @@ Antes de rodar comando, escrever código ou responder pergunta sobre um serviço
 1. Se a mensagem menciona ou implica um ticket, rodar `ticket-understand` **primeiro**.
    **Exceção:** alerta de produção não é ticket — ver abaixo.
 2. Identificar o serviço envolvido (pelo diretório ou pelo pedido)
-3. Verificar se `.claude/commands/spec.md` e `plan.md` existem na raiz do projeto
-4. Reler as regras de código deste arquivo antes de escrever PHP ou criar commit
+3. Reler as regras de código deste arquivo antes de escrever PHP ou criar commit
 
 Vale para tudo: rodar testes, corrigir bug, adicionar feature, responder pergunta sobre o código.
 
@@ -30,7 +29,7 @@ Vale para tudo: rodar testes, corrigir bug, adicionar feature, responder pergunt
 
 Alerta de produção — PagerDuty, erro do Datadog colado, qualquer coisa vinda dos canais de alarme, ou
 menção a estar de oncall — vai para `/oncall`, **não** para o fluxo de ticket. Sem
-`ticket-understand`, sem spec/plano, sem código. É produção: investigação somente-leitura, e toda
+`ticket-understand`, sem `sdd-*`, sem código. É produção: investigação somente-leitura, e toda
 ação que muda estado é escrita para o Lucas executar ele mesmo.
 
 Entrar ou sair do turno, sem alerta, é `/oncall-shift`. Canais, perfis, escalonamento, checklist e
@@ -83,13 +82,28 @@ A regra de não atribuição de IA está no global e vale aqui integralmente.
 
 ---
 
-## SDD — onde spec e plano moram
+## SDD — o plugin, e o Jira como único lugar
 
-Cada serviço tem seu próprio layout; não assumir um pelo outro. Ver `sdd.output` no `context.yaml`, e
-conferir no `git log` do próprio serviço antes de criar o arquivo.
+Desde 2026-10-14 o SDD da Celesta é o plugin `celesta-engineering-playbook` (marketplace
+`celesta-claude-marketplace`, instalado pelo `bootstrap.sh`). Quatro skills manuais, uma por fase:
 
-Planejamento de épico multi-ticket nasce fora das branches, em `tickets/<épico>/`, com `epic.md` mais
-uma pasta por subtask — antes de qualquer `/spec`. Spec e plano continuam nascendo nas branches.
+| Fase | Skill | Escreve | Onde |
+|---|---|---|---|
+| spec | `/sdd-spec <parent>` | título + descrição em 5 seções | ticket pai |
+| split | `/sdd-split <parent>` | uma sub-task **por repositório**, links Blocks | sub-tasks novas |
+| plano | `/sdd-plan <sub-task>` | plano em 6 seções | descrição da sub-task |
+| código | `/sdd-implement <sub-task>` | arquivos na branch `<KEY>`, testes verdes, `sdd-reviewer` limpo | working tree |
+
+**Spec e plano não existem como arquivo.** Nada de `_specs/`, `_plans/` ou `.claude/commands/spec.md`
+no serviço: o que ainda existir disso é legado, não fonte. Quem quer a spec lê a descrição do pai;
+quem quer o plano lê a descrição da sub-task.
+
+Constantes que as skills e eu usamos: `sdd:` no `context.yaml`. Precisam dos connectors Atlassian,
+Notion (spec e split recusam sem ele) e GitHub. Uma fase por sessão, `/clear` entre elas: cada uma
+relê o que precisa do Jira, e a troca de modelo entre fases já descarta o cache.
+
+Planejamento de épico multi-ticket continua fora das branches, em `tickets/<épico>/` — ver
+`rules/deliverables.md`. O split organiza um pai; o que atravessa vários pais é do épico.
 
 ---
 

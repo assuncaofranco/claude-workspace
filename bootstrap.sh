@@ -67,7 +67,6 @@ echo "  ${DIM}symlinks de diretório${OFF}"
 link_dir "$CLAUDE/commands" "$REPO/global/skills"                       "commands -> global/skills"
 link_dir "$CLAUDE/memory"   "$REPO/global/memory"                       "memory -> global/memory"
 link_dir "$CLAUDE/shared"   "$REPO/celesta-microservices/shared"        "shared -> celesta-microservices/shared"
-link_dir "$CLAUDE/hooks"    "$REPO/celesta-microservices/hooks"         "hooks -> celesta-microservices/hooks"
 link_dir "$CLAUDE/postman"  "$REPO/celesta-microservices/postman"       "postman -> celesta-microservices/postman"
 link_dir "$CLAUDE/projects/-Users-l-franco-Desktop-celesta-projects/memory" \
          "$REPO/celesta-microservices/memory" "memória do projeto celesta"
@@ -95,6 +94,24 @@ Este arquivo é um stub. O conteúdo real é versionado em \`$REPO\` e entra por
 Para montar tudo numa máquina nova: \`$REPO/bootstrap.sh\`.
 EOF
   fix "CLAUDE.md" "escrito (o anterior ficou em CLAUDE.md.pre-bootstrap)"
+fi
+
+echo
+echo "  ${DIM}plugin do SDD (vem do marketplace, não é versionado aqui)${OFF}"
+PLUGIN="celesta-engineering-playbook@celesta-claude-marketplace"
+if grep -q "\"$PLUGIN\"" "$CLAUDE/plugins/installed_plugins.json" 2>/dev/null; then
+  ok "$PLUGIN"
+elif [ "$CHECK" = 1 ]; then
+  bad "$PLUGIN" "não instalado"
+elif ! command -v claude >/dev/null; then
+  bad "$PLUGIN" "não instalado e o CLI claude não está no PATH"
+else
+  claude plugin marketplace add celesta-tech/celesta-claude-marketplace >/dev/null 2>&1
+  if claude plugin install "$PLUGIN" >/dev/null 2>&1; then
+    fix "$PLUGIN" "instalado"
+  else
+    bad "$PLUGIN" "falhou — o gh precisa ler celesta-tech/celesta-claude-marketplace"
+  fi
 fi
 
 echo

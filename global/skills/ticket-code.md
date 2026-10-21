@@ -9,6 +9,11 @@ Write the code for `$ARGUMENTS`. Assumes `ticket-understand` already produced th
 understanding and `ticket-test` already produced or updated the scenario used to drive and verify it.
 Do not start this step from a bare ticket description alone.
 
+Quando o projeto tem uma fase de implementação de SDD (overlay), este passo roda **dentro** dela: o
+plano diz o que fazer, estas regras dizem como não fazer. Se uma regra daqui exigir algo que o plano
+não tem — uma célula A sem tarefa, uma constante que precisa ir para a biblioteca — **parar e
+dizer**: a correção vai para o plano (amend upstream), não para um desvio em silêncio no código.
+
 Project-specific constraints — forbidden functions, lint thresholds, which shared library owns what,
 and the known test backlogs — live in the project's own standards file and context table (for
 Celesta: `celesta-microservices/shared/coding-standards.md` and

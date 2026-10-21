@@ -1,0 +1,324 @@
+{
+  "info": {
+    "name": "CLS-3471-CLS-3486 PP1: failed wallet call stored like PHP",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Run folder 1, open gameUrl (printed in the console and stored in the gameUrl variable) in a browser, bet above the balance until the game says insufficient funds, then run folder 2."
+  },
+  "item": [
+    {
+      "name": "1 Player: open a SoftGamings game",
+      "item": [
+        {
+          "name": "Player token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"player\",\n  \"username\": \"{{playerEmail}}\",\n  \"password\": \"{{playerPassword}}\",\n  \"client_id\": \"{{oauth_client_id}}\",\n  \"client_secret\": \"{{oauth_client_secret}}\",\n  \"deviceInformation\": {\"ip\": \"{{launchIp}}\", \"userAgent\": \"Mozilla/5.0\"}\n}"
+            }
+          }
+        },
+        {
+          "name": "Player id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('playerId', String(pm.response.json().id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/player/information"
+          }
+        },
+        {
+          "name": "Launch the game (open gameUrl in the browser and bet above the balance)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const m = (pm.response.json().html || '').match(/src=\"([^\"]+)\"/);",
+                  "pm.test('game url in launch html', () => pm.expect(m).to.not.be.null);",
+                  "if (m) {",
+                  "  const url = m[1].replace(/&amp;/g, '&');",
+                  "  pm.collectionVariables.set('gameUrl', url);",
+                  "  console.log('OPEN IN THE BROWSER AND BET ABOVE THE BALANCE:', url);",
+                  "}",
+                  "const pad = n => String(n).padStart(2, '0');",
+                  "const d = new Date(Date.now() - 60*1000);",
+                  "pm.collectionVariables.set('testFrom', `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/en/game/{{gameId}}/launch",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ip\": \"{{launchIp}}\",\n  \"device\": \"desktop\",\n  \"lobbyUrl\": \"http://localhost\",\n  \"depositUrl\": \"http://localhost\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 BO: check what was stored",
+      "item": [
+        {
+          "name": "BO token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Player game rounds since the test started",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// window defaults to the last 2h when testFrom/testTo are empty",
+                  "const pad = n => String(n).padStart(2, '0');",
+                  "const fmt = d => `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;",
+                  "if (!pm.variables.get('testFrom')) pm.collectionVariables.set('testFrom', fmt(new Date(Date.now() - 2*3600*1000)));",
+                  "if (!pm.variables.get('testTo')) pm.collectionVariables.set('testTo', fmt(new Date(Date.now() + 600*1000)));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const rounds = pm.response.json();",
+                  "pm.test('player has rounds in the window', () => pm.expect(rounds.length).to.be.above(0));",
+                  "pm.collectionVariables.set('roundIds', JSON.stringify(rounds.map(r => r.id)));",
+                  "console.log('rounds', rounds.map(r => `${r.id} ${r.game && r.game.name}`).join(' | '));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game-rounds",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"limit\": 50,\n  \"order\": {\"field\": \"id\", \"direction\": \"desc\"},\n  \"filter\": {\n    \"playerIds\": [{{playerId}}],\n    \"createdAtRanges\": [{\"from\": \"{{testFrom}}\", \"to\": \"{{testTo}}\"}]\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "Transactions of those rounds: failed bets carry the wallet code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const failed = pm.response.json().filter(t => t.type === 'bet' && t.status === 'failure');",
+                  "console.log('failed bets', JSON.stringify(failed.map(t => ({id: t.id, providerTransactionId: t.providerTransactionId, errors: t.errors}))));",
+                  "pm.test('at least one failed bet in the window', () => pm.expect(failed.length).to.be.above(0));",
+                  "failed.forEach(t => {",
+                  "  pm.test(`bet ${t.id}: errors[0] is the integer wallet code 3`, () => {",
+                  "    pm.expect(t.errors).to.be.an('array');",
+                  "    pm.expect(t.errors[0]).to.equal(3);",
+                  "  });",
+                  "  pm.test(`bet ${t.id}: errors[1] is the PHP HTTP client message, not Go text`, () => {",
+                  "    pm.expect(String(t.errors[1])).to.match(/^HTTP\\/\\S+ 400 .* returned for \".*\\/game-transaction\\/[a-z]+\"\\.$/);",
+                  "    pm.expect(JSON.stringify(t.errors)).to.not.include('wallet: http');",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game-transactions",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filter\": {\"gameRoundIds\": {{roundIds}}}\n}"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "BO_baseUrl",
+      "value": "https://backend-api.preprod-1.octopodev.com"
+    },
+    {
+      "key": "domainId",
+      "value": "56"
+    },
+    {
+      "key": "playerId",
+      "value": ""
+    },
+    {
+      "key": "testFrom",
+      "value": ""
+    },
+    {
+      "key": "testTo",
+      "value": ""
+    },
+    {
+      "key": "BO_oauth_client_id",
+      "value": ""
+    },
+    {
+      "key": "BO_oauth_client_secret",
+      "value": ""
+    },
+    {
+      "key": "BO_username",
+      "value": ""
+    },
+    {
+      "key": "BO_password",
+      "value": ""
+    },
+    {
+      "key": "BO_access_token",
+      "value": ""
+    },
+    {
+      "key": "roundIds",
+      "value": ""
+    },
+    {
+      "key": "baseUrl",
+      "value": "https://gateway.preprod-1.octopodev.com"
+    },
+    {
+      "key": "oauth_client_id",
+      "value": ""
+    },
+    {
+      "key": "oauth_client_secret",
+      "value": ""
+    },
+    {
+      "key": "playerEmail",
+      "value": ""
+    },
+    {
+      "key": "playerPassword",
+      "value": ""
+    },
+    {
+      "key": "launchIp",
+      "value": "87.32.0.1"
+    },
+    {
+      "key": "gameId",
+      "value": "41935"
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "gameUrl",
+      "value": ""
+    }
+  ]
+}

@@ -67,6 +67,36 @@ montada no ambiente implantado, branches empilhadas. Ler as duas.
 Aqui fica só o que depende do esquema, das bibliotecas ou da infraestrutura da Celesta. Um item por
 lição, datado, com o porquê.
 
+- **2026-10-16 (review, CLS-1283-CLS-2485, celesta-wallet)** — o hook de commit roda o phpinsights e
+  **passa pelos thresholds** (style ≥ 85), mas a regra é arquivo tocado 100% limpo: ler as linhas
+  `::error` da saída, não o score. Num diff só de remoção isso pega duas coisas fáceis de deixar
+  para trás: a linha em branco antes do `}` da classe quando se apaga o último método (`[Braces]`),
+  e a sujeira pré-existente do arquivo (constante tipada, `!$x`, `{}` na mesma linha) que agora
+  passa a ser nossa porque o arquivo entrou no diff.
+- **2026-10-12 (review, CLS-3552-CLS-3553, celesta-promotion)** — CI do Proteus verde **não** prova
+  que a suíte rodou. O `.env.proteus` do serviço tem `QASE_ALLOW_REMOTE_MUTE=true`, então todo caso
+  mudo no Qase é pulado e o job passa. Antes de ler o verde como evidência, abrir o log do
+  `proteus / isolated-tests` e conferir `Test Suites: N skipped` e quais `PASS` faltam. Aconteceu duas
+  vezes no mesmo fix (2026-10-07 e hoje): QA muta para destravar os outros PRs, e o PR que corrige
+  deixa de ser verificado justamente nas suítes que motivaram o ticket.
+
+- **2026-10-09 (review, CLS-3471-CLS-3486, celesta-game-go)**: a celesta-wallet responde erro com
+  `code` **string** (`NOT_FOUND`, `VALIDATION_CONSTRAINT`, `ACCESS_DENIED`, `SERVER_ERROR`…), acrescentado
+  pelo `ErrorCodeResponseSubscriber` do `lancasters/symfony-components` em todo 400/401/402/403/404/500
+  JSON. Só o `TransactionException` (saldo, limite…) mantém o `code` inteiro. Parse de `code` como
+  `int` em Go falha em silêncio e, se o struct é um só, derruba o `errors` junto. Ao enumerar as
+  respostas de erro da wallet, a fonte são os subscribers da wallet, não o cliente que as consome.
+
+- **2026-10-08 (review, CLS-419-CLS-3392, celesta-promotion)** — um serviço que manda job para
+  outro tem que usar o transport da **conta onde o consumidor lê**, não o primeiro que parece certo.
+  O promotion tem duas contas SQS (`SQS_KUBERNETES_*`/`SQS_QUEUE_PREFIX` e `SQS_QUANTA_*`); o
+  statistics lê `statistics-kpi` na conta que o promotion chama de quanta. Em preprod, staging e
+  prod-2 as duas contas coincidem e tudo funciona; só em prod-1 a kubernetes é outra conta
+  (`413101478321`, `celesta-prod-1-`) e a mensagem iria para uma fila que ninguém lê, sem erro.
+  Conferir em `celesta-argocd-parameters/<env>/<serviço>/parameters.yaml`, produtor e consumidor
+  lado a lado, em todos os ambientes. Antes de criar constante, procurar o valor em
+  `celesta-constants` — `Statistics\EventTypeConstants` já tinha `created`/`status_changed`.
+
 - **2026-09-24 (review, CLS-2594-CLS-3107, celesta-backoffice)** — copiar um bloco do gateway que
   carrega `// TODO: Remove - <MS> handles this` duplica a dívida em vez de herdar o padrão. No
   `RewardController` a checagem de status do jogador via Memberzone está assim marcada há tempo,

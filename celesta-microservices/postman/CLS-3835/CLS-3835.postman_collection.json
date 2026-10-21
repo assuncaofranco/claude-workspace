@@ -1,0 +1,908 @@
+{
+  "info": {
+    "name": "CLS-3835 gateway default bonus list page size 50",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0 Baseline: how many bonuses the player has",
+      "item": [
+        {
+          "name": "Player token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"player\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"client_id\": \"{{oauth_client_id}}\",\n  \"client_secret\": \"{{oauth_client_secret}}\",\n  \"deviceInformation\": {\n    \"ip\": \"127.0.0.1\",\n    \"userAgent\": \"Mozilla/5.0\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const t = pm.response.json().access_token;",
+                  "pm.collectionVariables.set('access_token', t);",
+                  "const b64 = t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');",
+                  "const claims = JSON.parse(CryptoJS.enc.Base64.parse(b64).toString(CryptoJS.enc.Utf8));",
+                  "pm.collectionVariables.set('playerId', String(claims.sub));",
+                  "pm.collectionVariables.set('domainId', String(claims.domain_id));",
+                  "pm.collectionVariables.set('currency', claims.customer.currency);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /bonuses?limit=1000",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/bonuses?limit=1000"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const ids = pm.response.json().bonus.map(b => String(b.id));",
+                  "pm.collectionVariables.set('toOffer', String(Math.max(0, Number(pm.variables.get('minBonuses')) - ids.length)));",
+                  "console.log('player has ' + ids.length + ' bonuses, offering ' + pm.collectionVariables.get('toOffer'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1 BO setup: top the player up to minBonuses (skipped when already there)",
+      "item": [
+        {
+          "name": "BO token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (Number(pm.collectionVariables.get('toOffer')) <= 0) pm.execution.skipRequest();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST bonus_configuration (free, manual)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"qa3835-{{$timestamp}}\",\n  \"displayName\": \"qa3835\",\n  \"type\": \"free\",\n  \"model\": \"wager\",\n  \"wageringMultiplier\": \"5.00\",\n  \"maxWinMultiplier\": \"10\",\n  \"offeringMethod\": \"manual\",\n  \"currency\": \"{{currency}}\",\n  \"reason\": \"test\",\n  \"validDuringDays\": 3,\n  \"offerValidFor\": 2,\n  \"claimingEvent\": \"direct\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('rcId', pm.response.json().id);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (Number(pm.collectionVariables.get('toOffer')) <= 0) pm.execution.skipRequest();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH enable",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configuration/{{rcId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"enabled\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('enabled', () => pm.expect(pm.response.json().status).to.eql('enabled'));"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (Number(pm.collectionVariables.get('toOffer')) <= 0) pm.execution.skipRequest();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST offer (loops until toOffer is 0)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/bonus_configuration/{{rcId}}/offer",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"playerId\": \"{{playerId}}\",\n  \"amount\": 1,\n  \"message\": \"QA CLS-3835\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('offered', () => pm.expect(pm.response.json().status).to.eql('offered'));",
+                  "const left = Number(pm.collectionVariables.get('toOffer')) - 1;",
+                  "pm.collectionVariables.set('toOffer', String(left));",
+                  "if (left > 0) pm.execution.setNextRequest(pm.info.requestName);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (Number(pm.collectionVariables.get('toOffer')) <= 0) pm.execution.skipRequest();"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 GW /bonuses",
+      "item": [
+        {
+          "name": "Player token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"player\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"client_id\": \"{{oauth_client_id}}\",\n  \"client_secret\": \"{{oauth_client_secret}}\",\n  \"deviceInformation\": {\n    \"ip\": \"127.0.0.1\",\n    \"userAgent\": \"Mozilla/5.0\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const t = pm.response.json().access_token;",
+                  "pm.collectionVariables.set('access_token', t);",
+                  "const b64 = t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');",
+                  "const claims = JSON.parse(CryptoJS.enc.Base64.parse(b64).toString(CryptoJS.enc.Utf8));",
+                  "pm.collectionVariables.set('playerId', String(claims.sub));",
+                  "pm.collectionVariables.set('domainId', String(claims.domain_id));",
+                  "pm.collectionVariables.set('currency', claims.customer.currency);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "reference: ?limit=1000 (whole list)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/bonuses?limit=1000"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const ids = pm.response.json().bonus.map(b => String(b.id));",
+                  "pm.test('player has more than 50 bonuses', () => pm.expect(ids.length).to.be.above(50));",
+                  "pm.collectionVariables.set('fullIds', JSON.stringify(ids));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "no params -> first 50, same order",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/bonuses"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const ids = pm.response.json().bonus.map(b => String(b.id));",
+                  "const all = JSON.parse(pm.collectionVariables.get('fullIds'));",
+                  "pm.test('exactly 50', () => pm.expect(ids.length).to.eql(50));",
+                  "pm.test('same first 50 as the whole list', () => pm.expect(ids).to.eql(all.slice(0, 50)));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "?limit=60 -> 60",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/bonuses?limit=60"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const ids = pm.response.json().bonus.map(b => String(b.id));",
+                  "const all = JSON.parse(pm.collectionVariables.get('fullIds'));",
+                  "pm.test('min(60, total)', () => pm.expect(ids).to.eql(all.slice(0, 60)));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "?offset=50 -> next page of up to 50",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/bonuses?offset=50"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const ids = pm.response.json().bonus.map(b => String(b.id));",
+                  "const all = JSON.parse(pm.collectionVariables.get('fullIds'));",
+                  "pm.test('rows 51..100', () => pm.expect(ids).to.eql(all.slice(50, 100)));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "?limit=2&offset=51 -> 2",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/bonuses?limit=2&offset=51"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const ids = pm.response.json().bonus.map(b => String(b.id));",
+                  "const all = JSON.parse(pm.collectionVariables.get('fullIds'));",
+                  "pm.test('rows 52 and 53', () => pm.expect(ids).to.eql(all.slice(51, 53)));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "?limit= (blank) -> default 50",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/bonuses?limit="
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const ids = pm.response.json().bonus.map(b => String(b.id));",
+                  "const all = JSON.parse(pm.collectionVariables.get('fullIds'));",
+                  "pm.test('same as no limit', () => pm.expect(ids).to.eql(all.slice(0, 50)));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "?limit=1001 -> 400 on limit",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/bonuses?limit=1001"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error is on limit', () => pm.expect(Object.keys(pm.response.json().errors)).to.eql(['limit']));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "?limit=0 -> 400",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/bonuses?limit=0"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "?limit=-1 -> 400",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/bonuses?limit=-1"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "?limit=abc -> 400",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/bonuses?limit=abc"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "?offset=-1 -> 400",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/bonuses?offset=-1"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "reference: statuses[]=offered&limit=1000",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/bonuses?statuses[]=offered&limit=1000"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const ids = pm.response.json().bonus.map(b => String(b.id));",
+                  "pm.collectionVariables.set('offeredIds', JSON.stringify(ids));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "statuses[]=offered, no limit -> filter applied before the cut",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/bonuses?statuses[]=offered"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const list = pm.response.json().bonus;",
+                  "const all = JSON.parse(pm.collectionVariables.get('offeredIds'));",
+                  "pm.test('only offered', () => list.forEach(b => pm.expect(b.status).to.eql('offered')));",
+                  "pm.test('first min(50, offered)', () => pm.expect(list.map(b => String(b.id))).to.eql(all.slice(0, 50)));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "reference: statuses[]=claimed&limit=1000",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/bonuses?statuses[]=claimed&limit=1000"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const ids = pm.response.json().bonus.map(b => String(b.id));",
+                  "pm.collectionVariables.set('claimedIds', JSON.stringify(ids));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "statuses[]=claimed, no limit -> under 50 comes back whole",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/bonuses?statuses[]=claimed"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const ids = pm.response.json().bonus.map(b => String(b.id));",
+                  "const all = JSON.parse(pm.collectionVariables.get('claimedIds'));",
+                  "pm.test('fewer than 50 claimed (precondition)', () => pm.expect(all.length).to.be.below(50));",
+                  "pm.test('all of them', () => pm.expect(ids).to.eql(all));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 GW /reward/bonuses",
+      "item": [
+        {
+          "name": "Player token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"player\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"client_id\": \"{{oauth_client_id}}\",\n  \"client_secret\": \"{{oauth_client_secret}}\",\n  \"deviceInformation\": {\n    \"ip\": \"127.0.0.1\",\n    \"userAgent\": \"Mozilla/5.0\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const t = pm.response.json().access_token;",
+                  "pm.collectionVariables.set('access_token', t);",
+                  "const b64 = t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');",
+                  "const claims = JSON.parse(CryptoJS.enc.Base64.parse(b64).toString(CryptoJS.enc.Utf8));",
+                  "pm.collectionVariables.set('playerId', String(claims.sub));",
+                  "pm.collectionVariables.set('domainId', String(claims.domain_id));",
+                  "pm.collectionVariables.set('currency', claims.customer.currency);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "reference: ?limit=1000",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/reward/bonuses?limit=1000"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const ids = pm.response.json().bonus.map(b => String(b.id));",
+                  "pm.test('more than 50', () => pm.expect(ids.length).to.be.above(50));",
+                  "pm.collectionVariables.set('rewardIds', JSON.stringify(ids));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "no params -> first 50",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/reward/bonuses"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const ids = pm.response.json().bonus.map(b => String(b.id));",
+                  "const all = JSON.parse(pm.collectionVariables.get('rewardIds'));",
+                  "pm.test('exactly 50', () => pm.expect(ids.length).to.eql(50));",
+                  "pm.test('same first 50', () => pm.expect(ids).to.eql(all.slice(0, 50)));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "?limit=60 -> 60",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/reward/bonuses?limit=60"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const ids = pm.response.json().bonus.map(b => String(b.id));",
+                  "const all = JSON.parse(pm.collectionVariables.get('rewardIds'));",
+                  "pm.test('min(60, total)', () => pm.expect(ids).to.eql(all.slice(0, 60)));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "?limit=0 -> 400",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/reward/bonuses?limit=0"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "?limit=1001 -> 400 on limit",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/reward/bonuses?limit=1001"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error is on limit', () => pm.expect(Object.keys(pm.response.json().errors)).to.eql(['limit']));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:93"
+    },
+    {
+      "key": "BO_baseUrl",
+      "value": "http://localhost:84"
+    },
+    {
+      "key": "minBonuses",
+      "value": "60"
+    },
+    {
+      "key": "playerId",
+      "value": ""
+    },
+    {
+      "key": "domainId",
+      "value": ""
+    },
+    {
+      "key": "currency",
+      "value": ""
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "BO_access_token",
+      "value": ""
+    },
+    {
+      "key": "toOffer",
+      "value": ""
+    },
+    {
+      "key": "rcId",
+      "value": ""
+    },
+    {
+      "key": "fullIds",
+      "value": ""
+    },
+    {
+      "key": "offeredIds",
+      "value": ""
+    },
+    {
+      "key": "claimedIds",
+      "value": ""
+    },
+    {
+      "key": "rewardIds",
+      "value": ""
+    }
+  ]
+}

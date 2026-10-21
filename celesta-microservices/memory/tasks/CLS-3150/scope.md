@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 7c16fbf2-1a26-475a-8ca1-a2bb9c56e895
-  modified: 2026-10-21T10:15:17.001Z
+  modified: 2026-10-21T10:37:45.523Z
 ---
 
 Sub-task sem descrição do CLS-1283 (épico CLS-1277), atribuída ao Lucas. As irmãs (1624, 2485, 2759,
@@ -102,6 +102,13 @@ time, sem vazamento). DI nos campos do Jira das 4 sub-tasks (sem ordem; env no a
 rollback previsto) e completo em `tickets/CLS-1283/flipper-smoke/deployment-instructions.md`. CI verde
 na wallet e no BO; gateway e cms-v2 sem CI (o dev não dispara no próprio PR). Falta: mover os tickets no
 board (Lucas), passo 15 (preprod).
+**2026-10-21 ~11:40, review (passo 13):** diff re-derivado do git nos 4 repos, só remoções, nenhuma linha
+adicionada; grep `flipper` no repo inteiro das 4 branches (fora `_specs/_plans/_how_to_test`, lock, vendor)
+vazio; matriz conferida célula a célula (N do cell 7 reconfirmado no master de promotion/game/cms/contact,
+E do cell 6 vale: nenhum `services_*` separado para console/consumer); CI verde nos 4 após o update pelo
+botão, inclusive `build / images` do cms-v2 (fecha o `build:force` que a sessão não rodou). Rasoul já
+aprovou os 4 (carimbo para CI). Nenhum achado. Decisão do passo 15: só conferência rápida pós-deploy num
+PP (pods + `/_health` cms-v2 + token/`/ping` gateway), sem teste completo.
 
 **Why:** o objetivo é não deixar rastro do Flipper nos nossos MS; o que os outros times usam não muda.
 **How to apply:** próximo passo é `ticket-matrix`. Remoção pura, sem flag lida, então a matriz deve sair quase toda célula A.

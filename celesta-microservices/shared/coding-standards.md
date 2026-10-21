@@ -7,7 +7,7 @@ Single source of truth for Celesta PHP code quality — `CLAUDE.md` and the `tic
 - Max function length: 100 lines
 - Max line length: 120 characters (comments excluded)
 - Excluded from analysis: `var/`, `vendor/`, `translations/`, `config/`, `public/`, `ops/`, `docker/`, `assets/`, `bin/`, `src/Migrations/`, `.github/`, `tests/`
-- **Lint only checks the diff**: `make lint` runs phpinsights only on files in `git diff origin/master...<branch>` (excludes `tests/`). Any file you touch — even just restoring it — gets fully linted and must be 100% clean; untouched files can carry latent violations that never trip CI.
+- **Lint only checks the diff**: `make lint` runs phpinsights only on files in `git diff origin/master...<branch>` (excludes `tests/`). Any file you touch — even just restoring it — gets fully linted and must be 100% clean; untouched files can carry latent violations that never trip CI. The reverse also holds: on a deletion-only diff (CLS-3150/3904/3905, 2026-10-21) `make lint` and the `codestyle` CI check run on zero files, so their green proves nothing; `lint:container`, the suite and a boot check are what cover a removal.
 
 ## Sniffs explicitly disabled (don't flag these in review — they're off, not missed)
 From `phpinsights.php`'s `remove` list — the Symfony preset would otherwise check these:

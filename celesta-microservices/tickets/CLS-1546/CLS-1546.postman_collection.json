@@ -1,0 +1,1426 @@
+{
+  "info": {
+    "_postman_id": "5caed627-65ce-482f-a105-3a193e0857f2",
+    "name": "CLS-1546 - max bet activity (preprod)",
+    "description": "A-cells of the CLS-1546 matrix through the backoffice. Credentials come from the runner environment, never from this file. The scenario folder waits 5.5 min for the scenario edge cache.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 setup",
+      "item": [
+        {
+          "name": "token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));",
+                  "pm.environment.set(\"BO_access_token\", pm.response.json().access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "internal categories",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));",
+                  "const cats = pm.response.json();",
+                  "pm.test(\"at least two categories\", () => pm.expect(cats.length).to.be.at.least(2));",
+                  "if (!pm.environment.get(\"catA\")) { pm.environment.set(\"catA\", cats[0].id); }",
+                  "if (!pm.environment.get(\"catB\")) { pm.environment.set(\"catB\", cats[1].id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/games/internal_categories"
+          }
+        },
+        {
+          "name": "max bet before the test (kept to restore)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));",
+                  "pm.environment.set(\"originalMaxBet\", JSON.stringify(pm.response.json()));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/maximum-bet"
+          }
+        },
+        {
+          "name": "reset max bet to empty (PUT [], logs removals; DELETE needs a permission this user lacks)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/maximum-bet",
+            "body": {
+              "mode": "raw",
+              "raw": "[]"
+            }
+          }
+        },
+        {
+          "name": "wait for the reset logs",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "setTimeout(() => {}, 20000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/maximum-bet"
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 backoffice (cells 5, 6, 3, 7, 8, 4)",
+      "item": [
+        {
+          "name": "marker",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"logs readable\", () => pm.response.to.have.status(200));",
+                  "const l = pm.response.json();",
+                  "pm.environment.set(\"logMarker\", l.length ? l[0].createdAt : \"\");",
+                  "setTimeout(() => {}, 1100);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/logs",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filter\": {\n    \"playerIds\": [\n      {{playerId}}\n    ],\n    \"domainIds\": [\n      {{domainId}}\n    ],\n    \"event\": [\n      \"max_bet_limit_updated\"\n    ],\n    \"sourceTypes\": [],\n    \"sourceIds\": []\n  },\n  \"limit\": 1,\n  \"offset\": 0\n}"
+            }
+          }
+        },
+        {
+          "name": "PUT A=11, B=22 (null -> v, n categories)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/maximum-bet",
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\"gameCategoryId\": {{catA}}, \"amount\": 11},\n  {\"gameCategoryId\": {{catB}}, \"amount\": 22}\n]"
+            }
+          }
+        },
+        {
+          "name": "logs: 2 user entries",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.environment.set(\"expectNew\", 2);",
+                  "pm.environment.set(\"expectSourceType\", \"user\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const marker = pm.environment.get(\"logMarker\") || \"\";",
+                  "const expected = Number(pm.environment.get(\"expectNew\"));",
+                  "const sourceType = pm.environment.get(\"expectSourceType\");",
+                  "const attempt = Number(pm.environment.get(\"pollAttempt\") || 0);",
+                  "const all = pm.response.json();",
+                  "const fresh = all.filter(l => l.event === \"max_bet_limit_updated\" && l.sourceType === sourceType && l.createdAt > marker);",
+                  "if (fresh.length < expected && attempt < 12) {",
+                  "    pm.environment.set(\"pollAttempt\", attempt + 1);",
+                  "    setTimeout(() => {}, 5000);",
+                  "    postman.setNextRequest(pm.info.requestName);",
+                  "    return;",
+                  "}",
+                  "pm.environment.set(\"pollAttempt\", 0);",
+                  "pm.environment.set(\"freshLogs\", JSON.stringify(fresh));",
+                  "",
+                  "if (pm.environment.get(\"pollAttempt\") > 0) { return; }",
+                  "const logs = JSON.parse(pm.environment.get(\"freshLogs\"));",
+                  "const byCat = {};",
+                  "logs.forEach(l => { byCat[l.additionalData.internal_game_category_id] = l; });",
+                  "pm.test(\"2 new user log(s)\", () => pm.expect(logs.length).to.eql(2));",
+                  "",
+                  "logs.forEach(l => {",
+                  "    pm.test(`cat ${l.additionalData.internal_game_category_id}: source user, author = agent`, () => {",
+                  "        pm.expect(l.sourceType).to.eql(\"user\");",
+                  "        pm.expect(l.sourceUserId).to.be.a(\"number\");",
+                  "        pm.expect(l.additionalData.agent_id).to.eql(l.sourceUserId);",
+                  "    });",
+                  "});",
+                  "",
+                  "pm.test(\"{{catA}}: null -> 11\", () => {",
+                  "    const l = byCat[pm.environment.get(\"catA\")];",
+                  "    pm.expect(l, \"log for catA\").to.exist;",
+                  "    pm.expect(l.additionalData.before_value).to.eql(null);",
+                  "    pm.expect(l.additionalData.after_value).to.eql(11);",
+                  "    pm.expect(l.additionalData.internal_game_category_name).to.be.a(\"string\");",
+                  "});",
+                  "",
+                  "pm.test(\"{{catB}}: null -> 22\", () => {",
+                  "    const l = byCat[pm.environment.get(\"catB\")];",
+                  "    pm.expect(l, \"log for catB\").to.exist;",
+                  "    pm.expect(l.additionalData.before_value).to.eql(null);",
+                  "    pm.expect(l.additionalData.after_value).to.eql(22);",
+                  "    pm.expect(l.additionalData.internal_game_category_name).to.be.a(\"string\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/logs",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filter\": {\n    \"playerIds\": [\n      {{playerId}}\n    ],\n    \"domainIds\": [\n      {{domainId}}\n    ],\n    \"event\": [\n      \"max_bet_limit_updated\"\n    ],\n    \"sourceTypes\": [\n      \"user\"\n    ],\n    \"sourceIds\": []\n  },\n  \"limit\": 50,\n  \"offset\": 0\n}"
+            }
+          }
+        },
+        {
+          "name": "marker",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"logs readable\", () => pm.response.to.have.status(200));",
+                  "const l = pm.response.json();",
+                  "pm.environment.set(\"logMarker\", l.length ? l[0].createdAt : \"\");",
+                  "setTimeout(() => {}, 1100);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/logs",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filter\": {\n    \"playerIds\": [\n      {{playerId}}\n    ],\n    \"domainIds\": [\n      {{domainId}}\n    ],\n    \"event\": [\n      \"max_bet_limit_updated\"\n    ],\n    \"sourceTypes\": [],\n    \"sourceIds\": []\n  },\n  \"limit\": 1,\n  \"offset\": 0\n}"
+            }
+          }
+        },
+        {
+          "name": "PUT same amounts (v -> v)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/maximum-bet",
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\"gameCategoryId\": {{catA}}, \"amount\": 11},\n  {\"gameCategoryId\": {{catB}}, \"amount\": 22}\n]"
+            }
+          }
+        },
+        {
+          "name": "wait for the queue",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "setTimeout(() => {}, 20000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/maximum-bet"
+          }
+        },
+        {
+          "name": "logs: none for unchanged PUT",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.environment.set(\"expectNew\", 0);",
+                  "pm.environment.set(\"expectSourceType\", \"user\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const marker = pm.environment.get(\"logMarker\") || \"\";",
+                  "const expected = Number(pm.environment.get(\"expectNew\"));",
+                  "const sourceType = pm.environment.get(\"expectSourceType\");",
+                  "const attempt = Number(pm.environment.get(\"pollAttempt\") || 0);",
+                  "const all = pm.response.json();",
+                  "const fresh = all.filter(l => l.event === \"max_bet_limit_updated\" && l.sourceType === sourceType && l.createdAt > marker);",
+                  "if (fresh.length < expected && attempt < 12) {",
+                  "    pm.environment.set(\"pollAttempt\", attempt + 1);",
+                  "    setTimeout(() => {}, 5000);",
+                  "    postman.setNextRequest(pm.info.requestName);",
+                  "    return;",
+                  "}",
+                  "pm.environment.set(\"pollAttempt\", 0);",
+                  "pm.environment.set(\"freshLogs\", JSON.stringify(fresh));",
+                  "",
+                  "if (pm.environment.get(\"pollAttempt\") > 0) { return; }",
+                  "const logs = JSON.parse(pm.environment.get(\"freshLogs\"));",
+                  "const byCat = {};",
+                  "logs.forEach(l => { byCat[l.additionalData.internal_game_category_id] = l; });",
+                  "pm.test(\"0 new user log(s)\", () => pm.expect(logs.length).to.eql(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/logs",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filter\": {\n    \"playerIds\": [\n      {{playerId}}\n    ],\n    \"domainIds\": [\n      {{domainId}}\n    ],\n    \"event\": [\n      \"max_bet_limit_updated\"\n    ],\n    \"sourceTypes\": [\n      \"user\"\n    ],\n    \"sourceIds\": []\n  },\n  \"limit\": 50,\n  \"offset\": 0\n}"
+            }
+          }
+        },
+        {
+          "name": "marker",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"logs readable\", () => pm.response.to.have.status(200));",
+                  "const l = pm.response.json();",
+                  "pm.environment.set(\"logMarker\", l.length ? l[0].createdAt : \"\");",
+                  "setTimeout(() => {}, 1100);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/logs",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filter\": {\n    \"playerIds\": [\n      {{playerId}}\n    ],\n    \"domainIds\": [\n      {{domainId}}\n    ],\n    \"event\": [\n      \"max_bet_limit_updated\"\n    ],\n    \"sourceTypes\": [],\n    \"sourceIds\": []\n  },\n  \"limit\": 1,\n  \"offset\": 0\n}"
+            }
+          }
+        },
+        {
+          "name": "PATCH B=33 (v -> v')",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/maximum-bet/{{catB}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 33}"
+            }
+          }
+        },
+        {
+          "name": "logs: 1 user entry",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.environment.set(\"expectNew\", 1);",
+                  "pm.environment.set(\"expectSourceType\", \"user\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const marker = pm.environment.get(\"logMarker\") || \"\";",
+                  "const expected = Number(pm.environment.get(\"expectNew\"));",
+                  "const sourceType = pm.environment.get(\"expectSourceType\");",
+                  "const attempt = Number(pm.environment.get(\"pollAttempt\") || 0);",
+                  "const all = pm.response.json();",
+                  "const fresh = all.filter(l => l.event === \"max_bet_limit_updated\" && l.sourceType === sourceType && l.createdAt > marker);",
+                  "if (fresh.length < expected && attempt < 12) {",
+                  "    pm.environment.set(\"pollAttempt\", attempt + 1);",
+                  "    setTimeout(() => {}, 5000);",
+                  "    postman.setNextRequest(pm.info.requestName);",
+                  "    return;",
+                  "}",
+                  "pm.environment.set(\"pollAttempt\", 0);",
+                  "pm.environment.set(\"freshLogs\", JSON.stringify(fresh));",
+                  "",
+                  "if (pm.environment.get(\"pollAttempt\") > 0) { return; }",
+                  "const logs = JSON.parse(pm.environment.get(\"freshLogs\"));",
+                  "const byCat = {};",
+                  "logs.forEach(l => { byCat[l.additionalData.internal_game_category_id] = l; });",
+                  "pm.test(\"1 new user log(s)\", () => pm.expect(logs.length).to.eql(1));",
+                  "",
+                  "logs.forEach(l => {",
+                  "    pm.test(`cat ${l.additionalData.internal_game_category_id}: source user, author = agent`, () => {",
+                  "        pm.expect(l.sourceType).to.eql(\"user\");",
+                  "        pm.expect(l.sourceUserId).to.be.a(\"number\");",
+                  "        pm.expect(l.additionalData.agent_id).to.eql(l.sourceUserId);",
+                  "    });",
+                  "});",
+                  "",
+                  "pm.test(\"{{catB}}: 22 -> 33\", () => {",
+                  "    const l = byCat[pm.environment.get(\"catB\")];",
+                  "    pm.expect(l, \"log for catB\").to.exist;",
+                  "    pm.expect(l.additionalData.before_value).to.eql(22);",
+                  "    pm.expect(l.additionalData.after_value).to.eql(33);",
+                  "    pm.expect(l.additionalData.internal_game_category_name).to.be.a(\"string\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/logs",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filter\": {\n    \"playerIds\": [\n      {{playerId}}\n    ],\n    \"domainIds\": [\n      {{domainId}}\n    ],\n    \"event\": [\n      \"max_bet_limit_updated\"\n    ],\n    \"sourceTypes\": [\n      \"user\"\n    ],\n    \"sourceIds\": []\n  },\n  \"limit\": 50,\n  \"offset\": 0\n}"
+            }
+          }
+        },
+        {
+          "name": "marker",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"logs readable\", () => pm.response.to.have.status(200));",
+                  "const l = pm.response.json();",
+                  "pm.environment.set(\"logMarker\", l.length ? l[0].createdAt : \"\");",
+                  "setTimeout(() => {}, 1100);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/logs",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filter\": {\n    \"playerIds\": [\n      {{playerId}}\n    ],\n    \"domainIds\": [\n      {{domainId}}\n    ],\n    \"event\": [\n      \"max_bet_limit_updated\"\n    ],\n    \"sourceTypes\": [],\n    \"sourceIds\": []\n  },\n  \"limit\": 1,\n  \"offset\": 0\n}"
+            }
+          }
+        },
+        {
+          "name": "PATCH B=33 again (v -> v)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/maximum-bet/{{catB}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 33}"
+            }
+          }
+        },
+        {
+          "name": "wait for the queue ",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "setTimeout(() => {}, 20000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/maximum-bet"
+          }
+        },
+        {
+          "name": "logs: none for unchanged PATCH",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.environment.set(\"expectNew\", 0);",
+                  "pm.environment.set(\"expectSourceType\", \"user\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const marker = pm.environment.get(\"logMarker\") || \"\";",
+                  "const expected = Number(pm.environment.get(\"expectNew\"));",
+                  "const sourceType = pm.environment.get(\"expectSourceType\");",
+                  "const attempt = Number(pm.environment.get(\"pollAttempt\") || 0);",
+                  "const all = pm.response.json();",
+                  "const fresh = all.filter(l => l.event === \"max_bet_limit_updated\" && l.sourceType === sourceType && l.createdAt > marker);",
+                  "if (fresh.length < expected && attempt < 12) {",
+                  "    pm.environment.set(\"pollAttempt\", attempt + 1);",
+                  "    setTimeout(() => {}, 5000);",
+                  "    postman.setNextRequest(pm.info.requestName);",
+                  "    return;",
+                  "}",
+                  "pm.environment.set(\"pollAttempt\", 0);",
+                  "pm.environment.set(\"freshLogs\", JSON.stringify(fresh));",
+                  "",
+                  "if (pm.environment.get(\"pollAttempt\") > 0) { return; }",
+                  "const logs = JSON.parse(pm.environment.get(\"freshLogs\"));",
+                  "const byCat = {};",
+                  "logs.forEach(l => { byCat[l.additionalData.internal_game_category_id] = l; });",
+                  "pm.test(\"0 new user log(s)\", () => pm.expect(logs.length).to.eql(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/logs",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filter\": {\n    \"playerIds\": [\n      {{playerId}}\n    ],\n    \"domainIds\": [\n      {{domainId}}\n    ],\n    \"event\": [\n      \"max_bet_limit_updated\"\n    ],\n    \"sourceTypes\": [\n      \"user\"\n    ],\n    \"sourceIds\": []\n  },\n  \"limit\": 50,\n  \"offset\": 0\n}"
+            }
+          }
+        },
+        {
+          "name": "marker",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"logs readable\", () => pm.response.to.have.status(200));",
+                  "const l = pm.response.json();",
+                  "pm.environment.set(\"logMarker\", l.length ? l[0].createdAt : \"\");",
+                  "setTimeout(() => {}, 1100);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/logs",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filter\": {\n    \"playerIds\": [\n      {{playerId}}\n    ],\n    \"domainIds\": [\n      {{domainId}}\n    ],\n    \"event\": [\n      \"max_bet_limit_updated\"\n    ],\n    \"sourceTypes\": [],\n    \"sourceIds\": []\n  },\n  \"limit\": 1,\n  \"offset\": 0\n}"
+            }
+          }
+        },
+        {
+          "name": "PUT only A=12 (A updated, B removed by replace)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/maximum-bet",
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\"gameCategoryId\": {{catA}}, \"amount\": 12}\n]"
+            }
+          }
+        },
+        {
+          "name": "logs: 2 user entries (update + removal)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.environment.set(\"expectNew\", 2);",
+                  "pm.environment.set(\"expectSourceType\", \"user\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const marker = pm.environment.get(\"logMarker\") || \"\";",
+                  "const expected = Number(pm.environment.get(\"expectNew\"));",
+                  "const sourceType = pm.environment.get(\"expectSourceType\");",
+                  "const attempt = Number(pm.environment.get(\"pollAttempt\") || 0);",
+                  "const all = pm.response.json();",
+                  "const fresh = all.filter(l => l.event === \"max_bet_limit_updated\" && l.sourceType === sourceType && l.createdAt > marker);",
+                  "if (fresh.length < expected && attempt < 12) {",
+                  "    pm.environment.set(\"pollAttempt\", attempt + 1);",
+                  "    setTimeout(() => {}, 5000);",
+                  "    postman.setNextRequest(pm.info.requestName);",
+                  "    return;",
+                  "}",
+                  "pm.environment.set(\"pollAttempt\", 0);",
+                  "pm.environment.set(\"freshLogs\", JSON.stringify(fresh));",
+                  "",
+                  "if (pm.environment.get(\"pollAttempt\") > 0) { return; }",
+                  "const logs = JSON.parse(pm.environment.get(\"freshLogs\"));",
+                  "const byCat = {};",
+                  "logs.forEach(l => { byCat[l.additionalData.internal_game_category_id] = l; });",
+                  "pm.test(\"2 new user log(s)\", () => pm.expect(logs.length).to.eql(2));",
+                  "",
+                  "logs.forEach(l => {",
+                  "    pm.test(`cat ${l.additionalData.internal_game_category_id}: source user, author = agent`, () => {",
+                  "        pm.expect(l.sourceType).to.eql(\"user\");",
+                  "        pm.expect(l.sourceUserId).to.be.a(\"number\");",
+                  "        pm.expect(l.additionalData.agent_id).to.eql(l.sourceUserId);",
+                  "    });",
+                  "});",
+                  "",
+                  "pm.test(\"{{catA}}: 11 -> 12\", () => {",
+                  "    const l = byCat[pm.environment.get(\"catA\")];",
+                  "    pm.expect(l, \"log for catA\").to.exist;",
+                  "    pm.expect(l.additionalData.before_value).to.eql(11);",
+                  "    pm.expect(l.additionalData.after_value).to.eql(12);",
+                  "    pm.expect(l.additionalData.internal_game_category_name).to.be.a(\"string\");",
+                  "});",
+                  "",
+                  "pm.test(\"{{catB}}: 33 -> null\", () => {",
+                  "    const l = byCat[pm.environment.get(\"catB\")];",
+                  "    pm.expect(l, \"log for catB\").to.exist;",
+                  "    pm.expect(l.additionalData.before_value).to.eql(33);",
+                  "    pm.expect(l.additionalData.after_value).to.eql(null);",
+                  "    pm.expect(l.additionalData.internal_game_category_name).to.be.a(\"string\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/logs",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filter\": {\n    \"playerIds\": [\n      {{playerId}}\n    ],\n    \"domainIds\": [\n      {{domainId}}\n    ],\n    \"event\": [\n      \"max_bet_limit_updated\"\n    ],\n    \"sourceTypes\": [\n      \"user\"\n    ],\n    \"sourceIds\": []\n  },\n  \"limit\": 50,\n  \"offset\": 0\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 scenario (cells 1, 2, 4 from scenario)",
+      "item": [
+        {
+          "name": "create static segment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));",
+                  "pm.environment.set(\"segmentId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/segment",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"CLS-1546 - test segment\",\n  \"currency\": \"{{currency}}\",\n  \"type\": \"static\",\n  \"segmentCriterias\": []\n}"
+            }
+          }
+        },
+        {
+          "name": "create scenario: enter segment -> segment condition -> update max bet A=5.5",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));",
+                  "pm.environment.set(\"scenarioId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/scenario",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"CLS-1546 - test scenario\",\n  \"currency\": \"{{currency}}\",\n  \"nodes\": [\n    {\n      \"index\": 0,\n      \"position\": {\n        \"x\": 0,\n        \"y\": 0\n      },\n      \"nodeType\": \"event\",\n      \"type\": \"enter_segment\",\n      \"root\": true\n    },\n    {\n      \"index\": 1,\n      \"position\": {\n        \"x\": 0,\n        \"y\": 150\n      },\n      \"nodeType\": \"condition_event\",\n      \"type\": \"segment\",\n      \"operator\": \"equal\",\n      \"value\": [\n        {{segmentId}}\n      ]\n    },\n    {\n      \"index\": 2,\n      \"position\": {\n        \"x\": 0,\n        \"y\": 300\n      },\n      \"nodeType\": \"action\",\n      \"type\": \"update_maximum_bet_amount\",\n      \"options\": {\n        \"amount\": 5.5,\n        \"gameCategoryId\": {{catA}}\n      }\n    }\n  ],\n  \"edges\": [\n    {\n      \"source\": 0,\n      \"target\": 1\n    },\n    {\n      \"source\": 1,\n      \"target\": 2\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "activate scenario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/scenario/settings/{{scenarioId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isActive\": true,\n  \"name\": \"CLS-1546 - test scenario\",\n  \"currency\": \"{{currency}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "PUT A=12, B=40 as baseline before the scenario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/maximum-bet",
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\"gameCategoryId\": {{catA}}, \"amount\": 12},\n  {\"gameCategoryId\": {{catB}}, \"amount\": 40}\n]"
+            }
+          }
+        },
+        {
+          "name": "wait 5.5 min (scenario edge cache is 300 s)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "setTimeout(() => {}, 330000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/maximum-bet"
+          }
+        },
+        {
+          "name": "marker",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"logs readable\", () => pm.response.to.have.status(200));",
+                  "const l = pm.response.json();",
+                  "pm.environment.set(\"logMarker\", l.length ? l[0].createdAt : \"\");",
+                  "setTimeout(() => {}, 1100);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/logs",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filter\": {\n    \"playerIds\": [\n      {{playerId}}\n    ],\n    \"domainIds\": [\n      {{domainId}}\n    ],\n    \"event\": [\n      \"max_bet_limit_updated\"\n    ],\n    \"sourceTypes\": [],\n    \"sourceIds\": []\n  },\n  \"limit\": 1,\n  \"offset\": 0\n}"
+            }
+          }
+        },
+        {
+          "name": "append player to segment (fires enter_segment)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"2xx\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/segment/{{segmentId}}/players",
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\"playerId\": {{playerId}}}\n]"
+            }
+          }
+        },
+        {
+          "name": "logs: 2 scenario entries (A update + B removed)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.environment.set(\"expectNew\", 2);",
+                  "pm.environment.set(\"expectSourceType\", \"scenario\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const marker = pm.environment.get(\"logMarker\") || \"\";",
+                  "const expected = Number(pm.environment.get(\"expectNew\"));",
+                  "const sourceType = pm.environment.get(\"expectSourceType\");",
+                  "const attempt = Number(pm.environment.get(\"pollAttempt\") || 0);",
+                  "const all = pm.response.json();",
+                  "const fresh = all.filter(l => l.event === \"max_bet_limit_updated\" && l.sourceType === sourceType && l.createdAt > marker);",
+                  "if (fresh.length < expected && attempt < 12) {",
+                  "    pm.environment.set(\"pollAttempt\", attempt + 1);",
+                  "    setTimeout(() => {}, 5000);",
+                  "    postman.setNextRequest(pm.info.requestName);",
+                  "    return;",
+                  "}",
+                  "pm.environment.set(\"pollAttempt\", 0);",
+                  "pm.environment.set(\"freshLogs\", JSON.stringify(fresh));",
+                  "",
+                  "if (pm.environment.get(\"pollAttempt\") > 0) { return; }",
+                  "const logs = JSON.parse(pm.environment.get(\"freshLogs\"));",
+                  "const byCat = {};",
+                  "logs.forEach(l => { byCat[l.additionalData.internal_game_category_id] = l; });",
+                  "pm.test(\"2 new scenario log(s)\", () => pm.expect(logs.length).to.eql(2));",
+                  "",
+                  "logs.forEach(l => {",
+                  "    pm.test(`cat ${l.additionalData.internal_game_category_id}: source scenario, id = scenario`, () => {",
+                  "        pm.expect(l.sourceType).to.eql(\"scenario\");",
+                  "        pm.expect(l.sourceUserId).to.eql(Number(pm.environment.get(\"scenarioId\")));",
+                  "        pm.expect(l.additionalData.agent_id).to.eql(null);",
+                  "    });",
+                  "});",
+                  "",
+                  "pm.test(\"{{catA}}: 12 -> 5.5\", () => {",
+                  "    const l = byCat[pm.environment.get(\"catA\")];",
+                  "    pm.expect(l, \"log for catA\").to.exist;",
+                  "    pm.expect(l.additionalData.before_value).to.eql(12);",
+                  "    pm.expect(l.additionalData.after_value).to.eql(5.5);",
+                  "    pm.expect(l.additionalData.internal_game_category_name).to.be.a(\"string\");",
+                  "});",
+                  "",
+                  "pm.test(\"{{catB}}: 40 -> null\", () => {",
+                  "    const l = byCat[pm.environment.get(\"catB\")];",
+                  "    pm.expect(l, \"log for catB\").to.exist;",
+                  "    pm.expect(l.additionalData.before_value).to.eql(40);",
+                  "    pm.expect(l.additionalData.after_value).to.eql(null);",
+                  "    pm.expect(l.additionalData.internal_game_category_name).to.be.a(\"string\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/logs",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filter\": {\n    \"playerIds\": [\n      {{playerId}}\n    ],\n    \"domainIds\": [\n      {{domainId}}\n    ],\n    \"event\": [\n      \"max_bet_limit_updated\"\n    ],\n    \"sourceTypes\": [\n      \"scenario\"\n    ],\n    \"sourceIds\": []\n  },\n  \"limit\": 50,\n  \"offset\": 0\n}"
+            }
+          }
+        },
+        {
+          "name": "max bet after scenario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"only A=5.5 left (replace)\", () => {",
+                  "    const mb = pm.response.json();",
+                  "    pm.expect(mb.length).to.eql(1);",
+                  "    pm.expect(mb[0].gameCategoryId).to.eql(Number(pm.environment.get(\"catA\")));",
+                  "    pm.expect(mb[0].amount).to.eql(5.5);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/maximum-bet"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 cleanup (only what this run created)",
+      "item": [
+        {
+          "name": "delete scenario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"2xx\", () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/scenario/{{scenarioId}}"
+          }
+        },
+        {
+          "name": "remove player from segment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"2xx\", () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/segment/{{segmentId}}/players"
+          }
+        },
+        {
+          "name": "delete segment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"2xx\", () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/segment/{{segmentId}}"
+          }
+        },
+        {
+          "name": "restore original max bet",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const orig = JSON.parse(pm.environment.get(\"originalMaxBet\") || \"[]\");",
+                  "pm.environment.set(\"originalMaxBetBody\", JSON.stringify(orig.map(m => ({gameCategoryId: m.gameCategoryId, amount: m.amount}))));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/maximum-bet",
+            "body": {
+              "mode": "raw",
+              "raw": "{{originalMaxBetBody}}"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          "if (pm.info.requestName === \"token\") { return; }",
+          "pm.sendRequest({",
+          "    url: pm.environment.get(\"BO_baseUrl\") + \"/oauth/2.0/token\",",
+          "    method: \"POST\",",
+          "    header: {\"Content-Type\": \"application/json\"},",
+          "    body: {mode: \"raw\", raw: JSON.stringify({",
+          "        grant_type: \"password\",",
+          "        client_id: pm.environment.get(\"BO_oauth_client_id\"),",
+          "        client_secret: pm.environment.get(\"BO_oauth_client_secret\"),",
+          "        username: pm.environment.get(\"BO_username\"),",
+          "        password: pm.environment.get(\"BO_password\")",
+          "    })}",
+          "}, (err, res) => { if (!err && res.code === 200) { pm.environment.set(\"BO_access_token\", res.json().access_token); } });"
+        ]
+      }
+    }
+  ]
+}

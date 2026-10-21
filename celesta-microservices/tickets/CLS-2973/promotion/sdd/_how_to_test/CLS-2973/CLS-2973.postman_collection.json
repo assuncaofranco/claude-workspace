@@ -1,0 +1,225 @@
+{
+  "info": {
+    "name": "CLS-2973 — promotion stops validating segment currency",
+    "description": "Drives the backoffice entry point only. Proves a promotion configuration can be created with segments of another currency, and that the domain-ownership rule still rejects a foreign segment. Order-dependent: run the whole collection in one invocation.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "BO_baseUrl", "value": "http://localhost:84" },
+    { "key": "BO_oauth_client_id", "value": "" },
+    { "key": "BO_oauth_client_secret", "value": "" },
+    { "key": "BO_username", "value": "" },
+    { "key": "BO_password", "value": "" },
+    { "key": "BO_access_token", "value": "" },
+    { "key": "domainId", "value": "1" },
+    { "key": "segmentIdA", "value": "1" },
+    { "key": "segmentIdB", "value": "2" },
+    { "key": "foreignSegmentId", "value": "999" },
+    { "key": "configurationCurrency", "value": "CAD" },
+    { "key": "promotionConfigurationId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Backoffice",
+      "item": [
+        {
+          "name": "1. BO token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('access_token returned', () => pm.expect(body.access_token).to.be.a('string').and.not.empty);",
+                  "pm.collectionVariables.set('BO_access_token', body.access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{BO_baseUrl}}/oauth/2.0/token",
+              "host": ["{{BO_baseUrl}}"],
+              "path": ["oauth", "2.0", "token"]
+            }
+          }
+        },
+        {
+          "name": "2. The segment is not in the configuration's currency",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('segment belongs to the domain', () =>",
+                  "  pm.expect(Number(body.id)).to.eql(Number(pm.collectionVariables.get('segmentIdA'))));",
+                  "const configCurrency = pm.collectionVariables.get('configurationCurrency');",
+                  "if (body.currency === undefined || body.currency === null) {",
+                  "  pm.test('segment exposes no currency (post CLS-2053) — nothing left to compare', () => pm.expect(true).to.be.true);",
+                  "} else {",
+                  "  pm.test('segment currency differs from the configuration one (pre CLS-2053)', () =>",
+                  "    pm.expect(body.currency).to.not.eql(configCurrency));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{BO_access_token}}" }],
+            "url": {
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/segment/{{segmentIdA}}",
+              "host": ["{{BO_baseUrl}}"],
+              "path": ["api", "gateway", "domain", "{{domainId}}", "segment", "{{segmentIdA}}"]
+            }
+          }
+        },
+        {
+          "name": "3. Create a configuration with segments of another currency",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const pad = n => String(n).padStart(2, '0');",
+                  "const fmt = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;",
+                  "const start = new Date(Date.now() + 24 * 60 * 60 * 1000);",
+                  "const end = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);",
+                  "pm.collectionVariables.set('startDate', fmt(start));",
+                  "pm.collectionVariables.set('endDate', fmt(end));",
+                  "pm.collectionVariables.set('configurationName', `CLS-2973 cross currency ${Date.now()}`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 — cross-currency segments accepted', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('no segmentIds violation', () => pm.expect(body.code).to.not.eql('VALIDATION_CONSTRAINT'));",
+                  "pm.test('kept the requested currency', () =>",
+                  "  pm.expect(body.currency).to.eql(pm.collectionVariables.get('configurationCurrency')));",
+                  "pm.test('kept both segments', () => {",
+                  "  const ids = (body.segmentIds || []).map(Number);",
+                  "  pm.expect(ids).to.include(Number(pm.collectionVariables.get('segmentIdA')));",
+                  "  pm.expect(ids).to.include(Number(pm.collectionVariables.get('segmentIdB')));",
+                  "});",
+                  "pm.collectionVariables.set('promotionConfigurationId', body.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{BO_access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{configurationName}}\",\n  \"currency\": \"{{configurationCurrency}}\",\n  \"startDate\": \"{{startDate}}\",\n  \"endDate\": \"{{endDate}}\",\n  \"engagementModel\": \"manual\",\n  \"type\": \"deposit_tier\",\n  \"segmentIds\": [{{segmentIdA}}, {{segmentIdB}}],\n  \"rewardingLimit\": 100,\n  \"playerPromotionLimit\": 1\n}"
+            },
+            "url": {
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration",
+              "host": ["{{BO_baseUrl}}"],
+              "path": ["api", "gateway", "domain", "{{domainId}}", "promotion-configuration"]
+            }
+          }
+        },
+        {
+          "name": "4. Read it back",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('persisted with the requested currency', () =>",
+                  "  pm.expect(body.currency).to.eql(pm.collectionVariables.get('configurationCurrency')));",
+                  "pm.test('persisted both segments', () => {",
+                  "  const ids = (body.segmentIds || []).map(Number);",
+                  "  pm.expect(ids).to.include(Number(pm.collectionVariables.get('segmentIdA')));",
+                  "  pm.expect(ids).to.include(Number(pm.collectionVariables.get('segmentIdB')));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{BO_access_token}}" }],
+            "url": {
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration/{{promotionConfigurationId}}",
+              "host": ["{{BO_baseUrl}}"],
+              "path": ["api", "gateway", "domain", "{{domainId}}", "promotion-configuration", "{{promotionConfigurationId}}"]
+            }
+          }
+        },
+        {
+          "name": "5. A segment outside the domain is still rejected",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const pad = n => String(n).padStart(2, '0');",
+                  "const fmt = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;",
+                  "pm.collectionVariables.set('startDate', fmt(new Date(Date.now() + 24 * 60 * 60 * 1000)));",
+                  "pm.collectionVariables.set('endDate', fmt(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)));",
+                  "pm.collectionVariables.set('configurationName', `CLS-2973 foreign segment ${Date.now()}`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 — domain ownership still enforced', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('violation is the domain one', () =>",
+                  "  pm.expect(JSON.stringify(body.segmentIds || [])).to.include('do not belong to the domain'));",
+                  "pm.test('no currency violation exists any more', () =>",
+                  "  pm.expect(JSON.stringify(body)).to.not.include('same currency as the promotion configuration'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{BO_access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{configurationName}}\",\n  \"currency\": \"{{configurationCurrency}}\",\n  \"startDate\": \"{{startDate}}\",\n  \"endDate\": \"{{endDate}}\",\n  \"engagementModel\": \"manual\",\n  \"type\": \"deposit_tier\",\n  \"segmentIds\": [{{foreignSegmentId}}],\n  \"rewardingLimit\": 100,\n  \"playerPromotionLimit\": 1\n}"
+            },
+            "url": {
+              "raw": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration",
+              "host": ["{{BO_baseUrl}}"],
+              "path": ["api", "gateway", "domain", "{{domainId}}", "promotion-configuration"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -15,6 +15,15 @@ desenho ou uma decisão, ir e voltar em trocas curtas — uma ideia ou pergunta 
 despejar o quadro inteiro numa mensagem. Detalhe vai para o arquivo de plano ou para a entrega, não
 para o chat.
 
+**Exceção nomeada — perguntas de uma fase do SDD.** Quando uma skill de fase do SDD do projeto
+(spec, split, plano) precisa de respostas para escrever o artefato, as perguntas vão **todas de uma
+vez**, num lote, e o follow-up na mensagem seguinte. A regra de uma por vez continua valendo para
+debate de desenho fora dessas fases.
+
+**Por quê:** o playbook de SDD da Celesta (2026-10-14) exige o lote, e a fase de spec roda no modelo
+mais caro da pipeline: cada pergunta a conta-gotas é um turno inteiro de redação. Ali a pergunta não
+é debate, é a lista do que falta para escrever.
+
 ## Opinião genuína, não carimbo
 
 Quando o Lucas propõe uma categorização, uma organização ou um desenho, avaliar de verdade — concordar
@@ -55,6 +64,23 @@ git log <base>..<head> --format='%s%n%b' | grep -iE 'co-authored|🤖|generated 
 
 Aconteceu uma vez: sete commits subiram com trailer de atribuição em branches com PR já aberto. As
 descrições foram baratas de corrigir; os commits não.
+
+## O nosso fluxo não aparece no artefato do time
+
+O que eu escrevo para a equipe (spec e plano no Jira, PR, commit, comentário) carrega o **conteúdo**,
+nunca a ferramenta pessoal que o produziu. Não citar: memória, matriz e suas classes (A/N/E), coleção
+de Postman, Newman, a pasta `tickets/`, skills, nem "decidido no chat". Entra o critério, a checagem
+descrita (requisição e resultado esperado), a decisão com o motivo dela.
+
+**Por quê:** em 2026-10-20 (CLS-1283), dois planos no Jira saíram citando "the CLS-1283 smoke
+collection", que só existe na máquina do Lucas. Quem pegasse a sub-task procuraria um arquivo que não
+tem como achar. O fluxo pessoal é o que tem evitado ticket reprovado e continua do nosso lado; o que o
+time lê precisa se sustentar sozinho, como se o fluxo não existisse.
+
+**Como aplicar:** antes de escrever no Jira, ou de mandar uma sessão do SDD escrever, reler o texto
+procurando esses nomes. Uma sessão do SDD só copia o que está na fonte que ela lê; se a memória ou o
+chat falar em "coleção", a fase de plano vai repetir. Então o recado para ela já vai em termos
+neutros.
 
 ## Nada de marca de IA no que for revisado
 

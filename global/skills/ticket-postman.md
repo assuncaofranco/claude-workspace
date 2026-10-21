@@ -27,10 +27,10 @@ explicitly in the output.
 
 1. **Identify the ticket and its flow.**
    - Take the ticket id from `$ARGUMENTS`; if absent, ask.
-   - Read the ticket's spec and plan in the owning service to learn what changes, which entry points
+   - Read the ticket's spec and plan where the project's SDD keeps them (overlay) to learn what changes, which entry points
      it uses and which endpoints it exercises. If there is no spec, ask for the flow in one or two
      sentences.
-   - **The spec's variation matrix (`ticket-matrix`) is the run list.** One run per A-cell, each
+   - **The ticket's variation matrix (`ticket-matrix`, `matrix.md` in the ticket's folder) is the run list.** One run per A-cell, each
      asserting that cell's acceptance criterion — not one happy path plus a note that the other
      variants "should behave the same". If a cell's criterion can't be asserted through the entry
      points, say so **now**: it can't be verified in pre-production either, and that is worth knowing
@@ -66,10 +66,11 @@ explicitly in the output.
    - **No ticket yet** (ad-hoc investigation, bug repro before a ticket exists): don't block on asking
      for an id — use a short descriptive slug and save outside every service repo, in the local
      collections folder named by the project context. That folder exists so an ad-hoc collection
-     can't be committed by accident. Once a real ticket exists, move both files into that service's
-     own how-to-test folder. In this mode the "test the FEATURE, not the bug" rule below does **not**
+     can't be committed by accident. Once a real ticket exists, move both files into that ticket's
+     folder (below). In this mode the "test the FEATURE, not the bug" rule below does **not**
      apply — reproducing the bug can be the entire point; say so in the Notes.
-   - **Has a ticket:** write the collection into the service's how-to-test folder for that ticket.
+   - **Has a ticket:** write the collection into the ticket's folder on our side (overlay), never into
+     a service repo. The collection is our tool, not a team artifact (`rules/deliverables.md`).
    - Write a `<TICKET>.md` beside it — **terse runbook for a human, not a report.** No justification
      paragraphs, no "verified by hand" narration, no bug write-up woven into the steps. Fixed
      sections, in this order: title; `**Feature:**` one line; `## Setup` (2-4 bullets: import, bring

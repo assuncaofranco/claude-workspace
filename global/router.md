@@ -18,6 +18,7 @@ de contexto custa mais que uma pergunta.
 | Menciona id de ticket, ou descreve mudança a fazer | **ticket** | seção 2 abaixo |
 | Pede review, cita PR, ou traz comentário de review para resolver | **review** | seção 3 abaixo |
 | Pergunta sobre o código, sem pedir mudança | **consulta** | nada; responder. `skills/explain.md` se pedir explicação. |
+| "o que fizemos ontem", pede a daily ou o resumo de um dia | **daily** | `skills/daily.md` |
 | Pede para mudar como eu trabalho | **corpus** | `rules/corpus.md` **antes** de editar qualquer coisa |
 
 Instrução concreta chegando junto da menção a um ticket (um comando git, um comentário para resolver)
@@ -32,18 +33,19 @@ Cada passo é uma skill que se explica sozinha. A ordem importa em três pontos,
 | 1 | Entender a necessidade de negócio | `skills/ticket-understand.md` |
 | 2 | Ler o código do domínio que o ticket toca | — |
 | 3 | Enumerar e classificar as variantes | `skills/ticket-matrix.md` |
-| 4 | Spec e plano (matriz = critérios de aceitação) | template do serviço + `rules/deliverables.md` |
+| 4 | Spec, split por repositório e plano (matriz = critérios de aceitação) | fases de spec, split e plano do SDD do projeto (overlay) |
 | 5 | Olhar o banco, somente leitura | `skills/db-query.md` |
 | 6 | Gerar a doc, montar a coleção a partir dela | `skills/ticket-postman.md` |
-| 7 | Implementar | `skills/ticket-code.md` + `rules/scope.md` |
+| 7 | Implementar | fase de implementação do SDD do projeto + `skills/ticket-code.md` + `rules/scope.md` |
 | 8 | Regerar a doc, rodar a coleção | `skills/ticket-postman.md` |
 | 9 | Cruzar requisição, resposta real e schema | — |
 | 10 | Diagnosticar divergência | `skills/ticket-postman.md` §7 |
 | 11 | Conferir o dado no banco | `skills/db-query.md` |
 | 12 | Lint e testes | `rules/environment.md` |
 | 13 | Review | seção 3 |
-| 14 | **Perguntar** se testamos em preprod | `skills/preprod-test.md` |
-| 15 | Entregar para o usuário testar |
+| 14 | Instruções de deploy, nos PRs e na pasta do ticket | `skills/deploy-instructions.md` |
+| 15 | **Perguntar** se testamos em preprod | `skills/preprod-test.md` |
+| 16 | Entregar para o usuário testar |
 
 **Três lugares onde a ordem é o valor:**
 
@@ -53,7 +55,27 @@ Cada passo é uma skill que se explica sozinha. A ordem importa em três pontos,
   auditoria. Num bug, o passo 6 já reproduz.
 - **8 depois de 7, repetido** — a doc do que o ticket cria só existe depois do código.
 
-O passo 14 é **pergunta, nunca silêncio**. Se sim, roda todas as células afetadas, não um caminho
+**Onde o SDD do projeto não cobre sozinho.** As fases do SDD executam o que o artefato anterior diz, e
+nada mais. Então o **resultado** do que este fluxo tem e elas não têm precisa estar escrito no
+artefato, ou se perde. O resultado, não a ferramenta: o artefato é do time e não cita o nosso fluxo
+(`rules/writing.md`, "O nosso fluxo não aparece no artefato do time").
+
+- os critérios que saem da matriz (3) entram nos critérios de aceitação da spec, como critérios
+  comuns. A tabela da matriz, com classes e justificativas, fica na pasta do ticket;
+- as checagens da coleção (6) entram na estratégia de teste do plano, descritas como requisição e
+  resultado esperado. A coleção fica do nosso lado e roda nos passos 8 e 15;
+- as regras de `ticket-code` que o plano precisa (critério sem código, migration, constante na
+  biblioteca) entram nas tarefas do plano — quem implementa não improvisa além delas.
+
+O revisor automático da fase de implementação **não** substitui o passo 13: ele lê diff, plano e spec,
+não a matriz contra a coleção nem a doc contra a resposta real.
+
+Uma fase do SDD por sessão, `/clear` entre elas. Cada uma relê o que precisa da fonte.
+
+O passo 14 nunca é pulado, nem quando o ticket parece não ter ordem: quem faz o deploy não é o Lucas,
+e o que não estiver escrito não existe para quem aperta o botão.
+
+O passo 15 é **pergunta, nunca silêncio**. Se sim, roda todas as células afetadas, não um caminho
 feliz — verificação parcial de mudança multi-variante é o que gerou as rejeições que isto evita.
 
 O passo 1 nunca é pulado.
@@ -64,9 +86,9 @@ O *como revisar* é o mesmo nos meus tickets e nos dos outros. O que muda é qua
 
 | Atribuição | Passos |
 |---|---|
-| Dev (ticket meu) | 1-15 |
+| Dev (ticket meu) | 1-16 |
 | Revisor (ticket de outro) | 1, 2, 4 (lê a matriz existente, **não** reconstrói), 13 |
-| Testador / QA | 1-6, 8-9, 11, 14 |
+| Testador / QA | 1-6, 8-9, 11, 15 |
 
 Carregar: `skills/ticket-review.md` + `rules/review-lens.md` + `rules/writing.md` (comentário de PR
 tem voz própria).

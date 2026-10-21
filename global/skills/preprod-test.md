@@ -76,8 +76,8 @@ to manufacture a race.
 
 This step exists because tickets came back rejected for partial implementations: correct on the
 variant we drove, silently wrong on the ones we never ran. So the run is not "does it work" — it is
-**every A-cell of the ticket's variation matrix** (`ticket-matrix`, carried in the spec's acceptance
-criteria), each asserted against its own acceptance criterion.
+**every A-cell of the ticket's variation matrix** (`ticket-matrix`: `matrix.md` in the ticket's
+folder, with its criteria in the spec), each asserted against its own acceptance criterion.
 
 - One run per A-cell. A criterion that can't be observed through the entry points can't be verified
   here — say so explicitly instead of declaring it passed.
@@ -91,7 +91,7 @@ criteria), each asserted against its own acceptance criterion.
 1. Confirm the change is deployed (ask, don't assume).
 2. Confirm the brand/domain — discover it; ask for credentials if the ticket's brand needs different
    ones than the vault holds.
-3. Pull the A-cells and their acceptance criteria from the ticket's spec. That list **is** the test
+3. Pull the A-cells from the ticket's `matrix.md` and their acceptance criteria from the spec. That list **is** the test
    plan — if the ticket has no matrix, stop and build one before testing.
 4. Identify the entry-point calls that exercise each cell. Reuse the ticket's Postman collection
    (`ticket-postman`) if one exists and already targets these entry points — its runs should already

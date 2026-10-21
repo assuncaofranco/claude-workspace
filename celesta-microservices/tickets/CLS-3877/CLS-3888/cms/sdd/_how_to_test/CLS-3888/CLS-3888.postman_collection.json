@@ -1,0 +1,197 @@
+{
+  "info": {
+    "name": "CLS-3888 T&C language added to domain after creation",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "BO_baseUrl", "value": "http://localhost:84" },
+    { "key": "BO_oauth_client_id", "value": "" },
+    { "key": "BO_oauth_client_secret", "value": "" },
+    { "key": "BO_username", "value": "" },
+    { "key": "BO_password", "value": "" },
+    { "key": "BO_access_token", "value": "" },
+    { "key": "domainId", "value": "2" },
+    { "key": "baseSecondaryLanguages", "value": "[\"en\",\"de\",\"en-AU\"]" },
+    { "key": "newLanguage", "value": "es" },
+    { "key": "tncSavedId", "value": "" },
+    { "key": "tncNotSavedId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Backoffice",
+      "item": [
+        {
+          "name": "Token",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200', () => pm.response.to.have.status(200));",
+            "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": { "mode": "raw", "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}" }
+          }
+        },
+        {
+          "name": "Domain without new language",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200', () => pm.response.to.have.status(200));",
+            "pm.test('new language not in domain', () => pm.expect(pm.response.json().secondaryLanguage).to.not.include(pm.collectionVariables.get('newLanguage')));"
+          ] } }],
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{BO_access_token}}" }],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}",
+            "body": { "mode": "raw", "raw": "{\n  \"secondaryLanguage\": {{baseSecondaryLanguages}}\n}" }
+          }
+        },
+        {
+          "name": "Create T&C (to be saved)",
+          "event": [
+            { "listen": "prerequest", "script": { "exec": [
+              "// cms caches the domain for 60s; wait so it sees the language set above",
+              "setTimeout(() => {}, 61000);"
+            ] } },
+            { "listen": "test", "script": { "exec": [
+              "pm.test('200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('no slot for new language', () => pm.expect(body.content).to.not.have.property(pm.collectionVariables.get('newLanguage')));",
+              "pm.collectionVariables.set('tncSavedId', body.id);"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{BO_access_token}}" }],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/terms_and_conditions",
+            "body": { "mode": "raw", "raw": "{}" }
+          }
+        },
+        {
+          "name": "Fill T&C (to be saved)",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200', () => pm.response.to.have.status(200));"
+          ] } }],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{BO_access_token}}" }],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/terms_and_conditions/{{tncSavedId}}",
+            "body": { "mode": "raw", "raw": "{\n  \"content\": {\n    \"fr\": \"CGU fr\",\n    \"en\": \"T&C en\",\n    \"de\": \"AGB de\",\n    \"en-AU\": \"T&C en-AU\"\n  }\n}" }
+          }
+        },
+        {
+          "name": "Create T&C (published without saving)",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200', () => pm.response.to.have.status(200));",
+            "pm.collectionVariables.set('tncNotSavedId', pm.response.json().id);"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{BO_access_token}}" }],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/terms_and_conditions",
+            "body": { "mode": "raw", "raw": "{}" }
+          }
+        },
+        {
+          "name": "Fill T&C (published without saving)",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200', () => pm.response.to.have.status(200));"
+          ] } }],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{BO_access_token}}" }],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/terms_and_conditions/{{tncNotSavedId}}",
+            "body": { "mode": "raw", "raw": "{\n  \"content\": {\n    \"fr\": \"CGU fr\",\n    \"en\": \"T&C en\",\n    \"de\": \"AGB de\",\n    \"en-AU\": \"T&C en-AU\"\n  }\n}" }
+          }
+        },
+        {
+          "name": "Add new language to domain",
+          "event": [
+            { "listen": "prerequest", "script": { "exec": [
+              "const langs = JSON.parse(pm.collectionVariables.get('baseSecondaryLanguages'));",
+              "langs.push(pm.collectionVariables.get('newLanguage'));",
+              "pm.variables.set('secondaryWithNewLanguage', JSON.stringify(langs));"
+            ] } },
+            { "listen": "test", "script": { "exec": [
+              "pm.test('200', () => pm.response.to.have.status(200));",
+              "pm.test('new language in domain', () => pm.expect(pm.response.json().secondaryLanguage).to.include(pm.collectionVariables.get('newLanguage')));"
+            ] } }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{BO_access_token}}" }],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}",
+            "body": { "mode": "raw", "raw": "{\n  \"secondaryLanguage\": {{secondaryWithNewLanguage}}\n}" }
+          }
+        },
+        {
+          "name": "Publish without saving new language -> 400",
+          "event": [
+            { "listen": "prerequest", "script": { "exec": [
+              "// cms caches the domain for 60s; wait so it sees the new language",
+              "setTimeout(() => {}, 61000);"
+            ] } },
+            { "listen": "test", "script": { "exec": [
+              "pm.test('refused: new language has no content', () => pm.response.to.have.status(400));"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{BO_access_token}}" }],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/terms_and_conditions/publish/{{tncNotSavedId}}"
+          }
+        },
+        {
+          "name": "Save with new language",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200', () => pm.response.to.have.status(200));",
+            "const lang = pm.collectionVariables.get('newLanguage');",
+            "pm.test('new language content kept', () => pm.expect(pm.response.json().content[lang]).to.eql('T&C ' + lang));"
+          ] } }],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{BO_access_token}}" }],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/terms_and_conditions/{{tncSavedId}}",
+            "body": { "mode": "raw", "raw": "{\n  \"content\": {\n    \"fr\": \"CGU fr\",\n    \"en\": \"T&C en\",\n    \"de\": \"AGB de\",\n    \"en-AU\": \"T&C en-AU\",\n    \"{{newLanguage}}\": \"T&C {{newLanguage}}\"\n  }\n}" }
+          }
+        },
+        {
+          "name": "Read saved T&C",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200', () => pm.response.to.have.status(200));",
+            "const lang = pm.collectionVariables.get('newLanguage');",
+            "pm.test('new language content persisted', () => pm.expect(pm.response.json().content[lang]).to.eql('T&C ' + lang));"
+          ] } }],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{BO_access_token}}" }],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/terms_and_conditions/{{tncSavedId}}"
+          }
+        },
+        {
+          "name": "Publish saved T&C -> 200",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200', () => pm.response.to.have.status(200));"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{BO_access_token}}" }],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/terms_and_conditions/publish/{{tncSavedId}}"
+          }
+        },
+        {
+          "name": "Cleanup: remove new language from domain",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200', () => pm.response.to.have.status(200));"
+          ] } }],
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{BO_access_token}}" }],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}",
+            "body": { "mode": "raw", "raw": "{\n  \"secondaryLanguage\": {{baseSecondaryLanguages}}\n}" }
+          }
+        }
+      ]
+    }
+  ]
+}

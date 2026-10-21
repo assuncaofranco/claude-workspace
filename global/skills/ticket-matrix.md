@@ -5,7 +5,7 @@ argument-hint: <TICKET>
 
 # ticket-matrix
 
-Runs after `ticket-understand` and after the ticket's code has been read, before `/spec`. Produces one artifact: the **variation matrix** and the acceptance criteria derived from it.
+Runs after `ticket-understand` and after the ticket's code has been read, before the project's spec phase. Produces one artifact: the **variation matrix** and the acceptance criteria derived from it.
 
 ## Why this step exists
 
@@ -43,13 +43,13 @@ Second consequence: once Lucas signs off on the classification, a variant outsid
 
    Observable means the collection can read it back. "The bonus is created correctly" is not a criterion. "`GET /player/{id}/bonus` returns a `sub_balance` with `amount = 50` and `status = ACTIVE`" is.
 
-5. **Put it in the service's own `/spec`**, as its acceptance-criteria section. It is not a separate document — a matrix living outside the spec is a matrix nobody reads at review time.
+5. **Split it in two.** The criteria from step 4 go into the spec's acceptance criteria, through the project's spec phase, as plain criteria: no table, no A/N/E, no word "matrix" (`rules/writing.md`, "O nosso fluxo não aparece no artefato do time"). The plan phase reads the spec, not this chat, so without them there the plan covers only what someone remembered. The two tables themselves, with classes and justifications, go to `matrix.md` in the ticket's folder (overlay): they are our working record, read again at review and at preprod. When the spec lives in a tracker that re-renders markdown (Jira's ADF), re-read it after the write.
 
 6. **Get Lucas's sign-off on the classification before any code.** Present the N and E cells with their justifications explicitly; those are the ones that carry the risk, and they're the ones he can overrule from product knowledge you don't have.
 
 ## Output format
 
-Two tables in the spec.
+Two tables in `matrix.md` in the ticket's folder. The spec gets only the last column, as plain criteria.
 
 **Dimensions**
 
@@ -80,4 +80,4 @@ A dimension with a single possible value is not a dimension — drop it.
 - review or preprod finds a case the matrix didn't have. Add it, and record **why the enumeration missed it** — wrong source, or an unidentified dimension. That note is the only thing that makes the next matrix better.
 
 ## Next
-The service's own `/spec` and `/plan`, then `db-query` and `ticket-postman`.
+The project's spec, split and plan phases, then `db-query` and `ticket-postman`. The plan's testing strategy must describe each A-cell check (request and expected result), or the implementation's test loop never runs them. It describes them; it never names the collection.

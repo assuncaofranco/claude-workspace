@@ -1,0 +1,391 @@
+{
+  "info": {
+    "name": "CLS-412-CLS-2923 Offer a bonus with no back-office user, once",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "promotionUrl",
+      "value": "http://localhost:99"
+    },
+    {
+      "key": "guardKey",
+      "value": ""
+    },
+    {
+      "key": "domainId",
+      "value": "1"
+    },
+    {
+      "key": "playerId",
+      "value": "1"
+    },
+    {
+      "key": "currency",
+      "value": "EUR"
+    },
+    {
+      "key": "rewardConfigurationId",
+      "value": ""
+    },
+    {
+      "key": "firstBonusId",
+      "value": ""
+    },
+    {
+      "key": "secondBonusId",
+      "value": ""
+    },
+    {
+      "key": "idempotencyKey",
+      "value": ""
+    },
+    {
+      "key": "otherIdempotencyKey",
+      "value": ""
+    },
+    {
+      "key": "bonusesBefore",
+      "value": "0"
+    },
+    {
+      "key": "scenarioIdempotencyKey",
+      "value": ""
+    },
+    {
+      "key": "scenarioBonusId",
+      "value": ""
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Signs every request the way the curl library does: HMAC-SHA256 over",
+          "// METHOD + host + decoded path (+ md5 of the body for writes).",
+          "// Wrapped: the sandbox is shared across requests, so bare declarations collide.",
+          "(function () {",
+          "    const method = pm.request.method;",
+          "",
+          "    // Resolve the whole URL before splitting it. The base is a variable, so url.getHost()",
+          "    // would hand back the template and the signature would never match.",
+          "    const full = pm.variables.replaceIn(pm.request.url.toString());",
+          "    const parts = full.match(/^https?:\\/\\/([^\\/:]+)(?::\\d+)?([^?]*)/);",
+          "    const host = parts[1];",
+          "    const path = decodeURIComponent(parts[2] || '/');",
+          "",
+          "    let payload = method + host + path;",
+          "    if (method !== 'GET' && method !== 'DELETE') {",
+          "        const raw = pm.request.body && pm.request.body.raw ? pm.request.body.raw : '';",
+          "        payload += CryptoJS.MD5(pm.variables.replaceIn(raw)).toString();",
+          "    }",
+          "",
+          "    pm.request.headers.upsert({",
+          "        key: 'x-guard-secret',",
+          "        value: CryptoJS.HmacSHA256(payload, pm.variables.get('guardKey')).toString(),",
+          "    });",
+          "})();"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Setup",
+      "item": [
+        {
+          "name": "Count the bonuses this player already has",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/bonuses?filter[ownerIds][]={{playerId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('baseline read', () => pm.response.to.have.status(200));",
+                  "const rows = pm.response.json();",
+                  "const list = Array.isArray(rows) ? rows : (rows.data || []);",
+                  "// Counted rather than assumed: the collection has to pass on a database that is",
+                  "// already in use, not only on a fresh one.",
+                  "pm.collectionVariables.set('bonusesBefore', list.length);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create an enabled manual free reward configuration",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"CLS-2923 scenario offer\",\n  \"type\": \"free\",\n  \"model\": \"wager\",\n  \"currency\": \"{{currency}}\",\n  \"status\": \"enabled\",\n  \"offeringMethod\": \"manual\",\n  \"claimingEvent\": \"direct\",\n  \"validDuringDays\": 30,\n  \"offerValidFor\": 30,\n  \"wageringMultiplier\": \"5.00\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('reward configuration created', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set('rewardConfigurationId', b.id);",
+                  "const stamp = Date.now();",
+                  "pm.collectionVariables.set('idempotencyKey', '1:job_' + stamp + ':' + pm.collectionVariables.get('playerId'));",
+                  "pm.collectionVariables.set('otherIdempotencyKey', '1:job_' + (stamp + 1) + ':' + pm.collectionVariables.get('playerId'));",
+                  "pm.collectionVariables.set('scenarioIdempotencyKey', '1:job_' + (stamp + 2) + ':' + pm.collectionVariables.get('playerId'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Offer once",
+      "item": [
+        {
+          "name": "A first offer with no sourceUserId answers 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/player/{{playerId}}/reward-configuration/{{rewardConfigurationId}}/offer",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currency\": \"{{currency}}\",\n  \"amount\": \"25.00\",\n  \"idempotencyKey\": \"{{idempotencyKey}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('created', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('carries a bonus id', () => pm.expect(b.id).to.be.a('number'));",
+                  "pm.test('offered', () => pm.expect(b.status).to.eql('offered'));",
+                  "pm.collectionVariables.set('firstBonusId', b.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Repeating the same key answers 200 with the same bonus",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/player/{{playerId}}/reward-configuration/{{rewardConfigurationId}}/offer",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currency\": \"{{currency}}\",\n  \"amount\": \"99.00\",\n  \"idempotencyKey\": \"{{idempotencyKey}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('replayed, not created', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('same bonus as the first call', () => pm.expect(b.id).to.eql(Number(pm.collectionVariables.get('firstBonusId'))));",
+                  "pm.test('the different amount was ignored', () => pm.expect(b.amount).to.eql(25));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A different key creates a second bonus",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/player/{{playerId}}/reward-configuration/{{rewardConfigurationId}}/offer",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currency\": \"{{currency}}\",\n  \"amount\": \"25.00\",\n  \"idempotencyKey\": \"{{otherIdempotencyKey}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('created', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('a different bonus', () => pm.expect(b.id).to.not.eql(Number(pm.collectionVariables.get('firstBonusId'))));",
+                  "pm.collectionVariables.set('secondBonusId', b.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "An offer carrying a scenario keeps it as the source",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/player/{{playerId}}/reward-configuration/{{rewardConfigurationId}}/offer",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currency\": \"{{currency}}\",\n  \"amount\": \"25.00\",\n  \"sourceScenarioId\": 7,\n  \"idempotencyKey\": \"{{scenarioIdempotencyKey}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('created', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set('scenarioBonusId', b.id);",
+                  "// The offer response is the short shape and carries no source field.",
+                  "// The attribution is read back in Verify, off the bonus list the backoffice uses."
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Refusals",
+      "item": [
+        {
+          "name": "A currency the player does not hold is refused with its code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/player/{{playerId}}/reward-configuration/{{rewardConfigurationId}}/offer",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currency\": \"USD\",\n  \"amount\": \"25.00\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('rejected', () => pm.response.to.have.status(400));",
+                  "const b = pm.response.json();",
+                  "pm.test('carries the stable code', () => pm.expect(b.code).to.eql('CURRENCY_MISMATCH'));",
+                  "pm.test('carries a message', () => pm.expect(b.message).to.be.a('string'));",
+                  "pm.test('keeps the legacy field for the back-office', () => pm.expect(b.error).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Claiming a back-office user and a scenario at once is refused",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/player/{{playerId}}/reward-configuration/{{rewardConfigurationId}}/offer",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currency\": \"{{currency}}\",\n  \"amount\": \"25.00\",\n  \"sourceUserId\": 1,\n  \"sourceScenarioId\": 7\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('rejected', () => pm.response.to.have.status(400));",
+                  "const b = pm.response.json();",
+                  "pm.test('says which rule refused it', () => pm.expect(b.code).to.eql('AMBIGUOUS_OFFER_SOURCE'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Verify",
+      "item": [
+        {
+          "name": "Both bonuses are on the player, and only those two",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/bonuses?filter[ownerIds][]={{playerId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('read back', () => pm.response.to.have.status(200));",
+                  "const rows = pm.response.json();",
+                  "const list = Array.isArray(rows) ? rows : (rows.data || []);",
+                  "const ids = list.map(r => r.id);",
+                  "pm.test('the created bonus is there', () => pm.expect(ids).to.include(Number(pm.collectionVariables.get('firstBonusId'))));",
+                  "pm.test('the second one too', () => pm.expect(ids).to.include(Number(pm.collectionVariables.get('secondBonusId'))));",
+                  "pm.test('exactly three were created, so the replay created none', () => pm.expect(list.length - Number(pm.collectionVariables.get('bonusesBefore'))).to.eql(3));",
+                  "const scenarioBonus = list.find(r => r.id === Number(pm.collectionVariables.get('scenarioBonusId')));",
+                  "pm.test('the scenario offer is listed', () => pm.expect(scenarioBonus).to.be.an('object'));",
+                  "pm.test('and it says which scenario made it', () => pm.expect(scenarioBonus.sourceScenarioId).to.eql(7));",
+                  "pm.test('with no back-office user beside it', () => pm.expect(scenarioBonus.sourceUserId).to.eql(null));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

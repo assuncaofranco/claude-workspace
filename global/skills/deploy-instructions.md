@@ -35,12 +35,31 @@ Escrever "não há ordem" também é instrução. Silêncio não é.
 
 Cada afirmação aponta o arquivo ou o comando que a sustenta, como no resto do fluxo.
 
+O raciocínio acima é para **decidir** a ordem; quase nada dele vai para o texto.
+
+## O que se escreve — preguiçoso
+
+Lista de PRs na ordem, uma linha cada, e o rollback na ordem inversa. Nada mais, a não ser um passo
+que **não** é deploy de PR (script a rodar, espera por outro time, config).
+
+Nunca: detalhe de migration, "right before step 2", o que acontece na janela, "do not run the
+migration down" (deploy e rollback rodam `up` e `down` sozinhos), checagem de banco depois.
+
+**Por quê:** o Lucas cortou a primeira versão do CLS-3282-CLS-4163 (2026-11-02) — explicação em
+instrução de deploy é coisa de IA e fica patética; quem aperta o botão lê a ordem, não o porquê.
+
+**Onde a atenção vai de fato:** quando o código e o schema precisam mudar em momentos diferentes
+(entidade para de usar a coluna antes de ela sumir, por exemplo), isso vira **dois PRs** e duas
+linhas da lista. É o deploy que garante a ordem, não o texto. Migration só aditiva cabe no mesmo PR.
+
 ## Onde vai
 
-- **Arquivo completo** na pasta do ticket do overlay do projeto, `deployment-instructions.md`, com o
-  porquê de cada passo. Modelo: `celesta-microservices/tickets/CLS-1872/deployment-instructions.md`.
-- **Bloco curto em inglês** na seção de post deployment da descrição de **cada** PR envolvido: a
-  ordem, a regra de rollback e o que não é código. É o que quem faz o deploy lê de fato.
+- **Campos do ticket** quando o tracker tem (na Celesta: Deployment instructions, Rollback
+  instructions; Release note só para release de biblioteca, como `job-library: removed X`). É o que
+  quem faz o deploy lê de fato.
+- **A mesma lista** na seção de post deployment da descrição de **cada** PR envolvido.
+- **Pasta do ticket** do overlay, `deployment-instructions.md`, com o porquê de cada passo — o
+  raciocínio fica do nosso lado, não no ticket.
 
 ## Próximo
 

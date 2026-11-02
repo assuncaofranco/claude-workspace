@@ -57,6 +57,22 @@ Plus, no alternative — never use: `dump`, `dd`, `die`, `console.log`, `exec`, 
 | Constants | `celesta-constants` |
 | Messenger jobs | `celesta-job-library` |
 
+## Removing columns and tables — never in the deploy
+
+Política da Celesta, [Old data cleanup policy](https://app.notion.com/p/lrgi/Old-data-cleanup-policy-9c3016b461b741a5ad035b21521874d5)
+(Notion, TLs). Migration nenhuma dropa coluna ou tabela: **renomeia com prefixo `old_`** e o dado
+fica. O TL de cada componente dropa os `old_` na limpeza mensal, em preprod, staging e prod, fora
+dos 7 dias em volta da virada do mês, de sexta e depois das 14:00 UTC, avisando VPoE e SRE antes e
+depois.
+
+**Por quê:** rollback e recuperação de dado. O código anterior precisa achar a coluna se o deploy
+voltar.
+
+**Alcance:** coluna e tabela. Apagar **linhas** não é coberto; se a spec manda apagar dado inútil
+(CLS-3282-CLS-4163: gifts de teste apagados na migration), segue a spec. Em expand/contract, a parte
+que tira a coluna do código renomeia para `old_` em vez de dropar, e o `down` da migration desfaz o
+rename.
+
 ## Lessons from review
 
 As lições que **atravessam projeto** estão em

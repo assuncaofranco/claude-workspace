@@ -73,6 +73,24 @@ voltar.
 que tira a coluna do código renomeia para `old_` em vez de dropar, e o `down` da migration desfaz o
 rename.
 
+## Migrations on deploy and rollback
+
+O deploy roda `doctrine:migrations:migrate --no-interaction` no init container de cada pod, com a
+imagem daquele pod (`celesta-argocd/microservices/<serviço>/kustomize/base/<serviço>.yaml`, ex.
+`promotion.yaml:316`). Não há job de rollback que rode `down` (`celesta-jenkins-config` não tem).
+
+**Rollback não roda `down`.** A imagem anterior não tem a classe da migration nova; o Doctrine 3.8
+avisa "previously executed migrations … not registered", segue porque é não interativo, e o plano
+sai vazio ("Already at the latest version") — `SortedMigrationPlanCalculator::findMigrationsToExecute`
+para no `to` antes de chegar em qualquer migration desconhecida. O schema novo fica.
+
+**Consequência:** o código anterior tem que funcionar com o schema novo, e por isso migration que
+quebra o código anterior vai num PR separado, depois. `down` só roda à mão
+(`doctrine:migrations:execute '<Version>' --down`), com a imagem nova.
+
+Verificado em 2026-11-02 (CLS-3282-CLS-4163) lendo o argocd e o vendor do Doctrine; o Lucas achava
+que o rollback rodava `down`, o CLS-4164 dizia que não, e estava certo.
+
 ## Lessons from review
 
 As lições que **atravessam projeto** estão em

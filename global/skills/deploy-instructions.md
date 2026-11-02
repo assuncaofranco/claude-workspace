@@ -42,8 +42,12 @@ O raciocínio acima é para **decidir** a ordem; quase nada dele vai para o text
 Lista de PRs na ordem, uma linha cada, e o rollback na ordem inversa. Nada mais, a não ser um passo
 que **não** é deploy de PR (script a rodar, espera por outro time, config).
 
-Nunca: detalhe de migration, "right before step 2", o que acontece na janela, "do not run the
-migration down" (deploy e rollback rodam `up` e `down` sozinhos), checagem de banco depois.
+Nunca: detalhe de migration, "right before step 2", o que acontece na janela, comando de migration
+para quem faz o deploy, checagem de banco depois.
+
+Como a migration roda de fato depende do projeto (na Celesta: overlay, `coding-standards.md`,
+"Migrations on deploy and rollback"). Se o rollback **não** desfaz o schema, o código anterior
+precisa funcionar com o schema novo; isso se garante no desenho, não com instrução.
 
 **Por quê:** o Lucas cortou a primeira versão do CLS-3282-CLS-4163 (2026-11-02) — explicação em
 instrução de deploy é coisa de IA e fica patética; quem aperta o botão lê a ordem, não o porquê.

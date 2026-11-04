@@ -61,6 +61,12 @@ linhas da lista. É o deploy que garante a ordem, não o texto. Migration só ad
 - **Campos do ticket** quando o tracker tem (na Celesta: Deployment instructions, Rollback
   instructions; Release note só para release de biblioteca, como `job-library: removed X`). É o que
   quem faz o deploy lê de fato.
+- **No ticket pai também**, quando o ticket é sub-task (na Celesta, quem faz o deploy, o Marcello, lê
+  **só o pai**). A DI do pai junta a de todas as sub-tasks, inclusive as de outros devs: ler o que já
+  está no pai e nos irmãos antes de escrever, e encaixar os passos nossos na ordem, sem apagar os
+  deles (merge de QA, script, espera). Rollback na ordem inversa da lista inteira.
+  **Por quê:** Lucas, 2026-11-04 (CLS-3282): a DI que só morava na sub-task não chegava a quem faz o
+  deploy, e o pai pode ter passo de outro time que a nossa sub-task não conhece.
 - **A mesma lista** na seção de post deployment da descrição de **cada** PR envolvido.
 - **Pasta do ticket** do overlay, `deployment-instructions.md`, com o porquê de cada passo — o
   raciocínio fica do nosso lado, não no ticket.

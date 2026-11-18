@@ -91,6 +91,44 @@ quebra o código anterior vai num PR separado, depois. `down` só roda à mão
 Verificado em 2026-11-02 (CLS-3282-CLS-4163) lendo o argocd e o vendor do Doctrine; o Lucas achava
 que o rollback rodava `down`, o CLS-4164 dizia que não, e estava certo.
 
+## DDL on existing tables — o que é da Celesta
+
+A regra e o procedimento estão em [`../../global/rules/migrations.md`](../../global/rules/migrations.md).
+Aqui só o que é específico daqui.
+
+**Banco:** MySQL. O teto de espera é `SET SESSION lock_wait_timeout = 5` antes do DDL, dentro da
+migration (vale também para a espera pelo lock de metadados). As leituras da promotion morrem em
+25 s (`max_execution_time`, erro 3024), então 5 s atrasa sem dar erro. O padrão do repositório,
+`ALGORITHM=INPLACE, LOCK=NONE`, cuida da execução, não da espera: os dois vão juntos.
+
+**Medição em produção** (só metadado, nunca linha de dado):
+
+```sql
+SELECT TABLE_NAME, TABLE_ROWS, ROUND((DATA_LENGTH + INDEX_LENGTH) / 1024 / 1024) AS mb FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('<tabelas>')
+```
+
+```sql
+SELECT trx_mysql_thread_id, trx_started, TIMESTAMPDIFF(SECOND, trx_started, NOW()) AS age_s FROM information_schema.innodb_trx ORDER BY trx_started LIMIT 10
+```
+
+As tabelas pai de cada FK saem da consulta de chaves estrangeiras do `db-query`. Quem roda em
+produção: hoje o `db-query` proíbe produção para mim, então eu escrevo as consultas e o Lucas ou o
+infra rodam. **Pendente decisão do Lucas** (2026-11-18): abrir exceção só de metadado no `db-query`.
+
+**Uso da tabela:** Datadog APM, spans `type:sql` do serviço em `env:prod-1`, agrupados por
+`resource_name`. Não há DBM para a promotion; quem vê o lock em si é o Performance Insights do RDS
+(infra).
+
+**Tabelas quentes conhecidas** (lista cresce a cada análise):
+
+| Serviço | Tabela | Quem usa |
+|---|---|---|
+| promotion | `reward_configuration` | lista de bônus (join), `getBonusRewardConfigurations` (wallet), crons `reward-configuration:refresh-state` e `expire:bonus:validity` a cada minuto, workers de bônus |
+| promotion | `bonus` | os mesmos; FK para `reward_configuration`, então escrever em `bonus` também espera o lock dela |
+
+**O deploy:** a migration roda antes dos pods novos; se falhar, os antigos seguem atendendo. Abortar
+o Jenkins **não** cancela a migration: no CLS-4540 ela continuou rodando até o fim.
+
 ## Lessons from review
 
 As lições que **atravessam projeto** estão em

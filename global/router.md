@@ -102,10 +102,17 @@ tem voz própria).
 
 `rules/writing.md` — como eu escrevo, e a regra de não atribuição de IA. Vale em toda saída.
 
+**Migration — carregado sempre que houver DDL.** Plano, diff ou review com `CREATE`, `ALTER`, `DROP`,
+`RENAME`, índice ou chave estrangeira: carregar `rules/migrations.md` **antes** de escrever o plano,
+a migration ou o veredito. Vale em qualquer contexto da seção 1 e em qualquer passo da seção 2
+(4, 7, 13 e 14 são onde ela mais pesa). Nenhum DDL sobre tabela existente passa sem a análise com
+dado de produção.
+
 ## 5. Services — regra compartilhada, uma definição só
 
 | Arquivo | O que decide |
 |---|---|
+| `rules/migrations.md` | DDL que trava tabela: listar as tabelas, medir em produção, teto de espera, e o que fazer se houver risco |
 | `rules/scope.md` | o que está dentro e fora do escopo de um ticket, e a única exceção |
 | `rules/environment.md` | stack quebrada, cache velho, quando `make init` |
 | `rules/review-lens.md` | de onde tirar a verdade num review, e como pesar um achado |

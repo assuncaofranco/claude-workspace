@@ -94,5 +94,6 @@ que derruba.
 
 ## Limite de alcance
 
-Esta regra é do nosso fluxo. Os revisores automáticos do SDD do projeto não a conhecem até ela entrar
-no playbook do time; até lá, quem a aplica somos nós, no plano e no passo 13.
+Esta regra é do nosso fluxo e fica do nosso lado (decisão do Lucas, 2026-11-18: não propor ao
+playbook do time). Os revisores automáticos do SDD do projeto não a conhecem; quem a aplica somos nós,
+no plano e no passo 13, inclusive ao revisar ticket de outro.

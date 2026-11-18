@@ -1,0 +1,13 @@
+diff --git a/tests/GatewayBundle/Controller/Promotion/RewardAggregatorController/PostRewardAggregatorsTest.php b/tests/GatewayBundle/Controller/Promotion/RewardAggregatorController/PostRewardAggregatorsTest.php
+index 7259f650d1..1225e36c2b 100644
+--- a/tests/GatewayBundle/Controller/Promotion/RewardAggregatorController/PostRewardAggregatorsTest.php
++++ b/tests/GatewayBundle/Controller/Promotion/RewardAggregatorController/PostRewardAggregatorsTest.php
+@@ -300,7 +300,7 @@ class PostRewardAggregatorsTest extends GatewayTestCase
+         ];
+ 
+         self::mockPostRewardsAggregator('refer_friend', $role);
+-        self::mockGetPromotionConfiguration();
++        self::mockGetPromotionConfiguration(PromotionConfigurationConstants::TYPE_REFER_FRIEND);
+         self::mockGetOfferableRewardConfigurationForReward($rewardType);
+ 
+         self::clientJsonRequest(

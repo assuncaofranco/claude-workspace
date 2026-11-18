@@ -1,0 +1,140 @@
+{
+  "info": {
+    "name": "CLS-3676 pp1 deposit through the gateway",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Player token",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/oauth/2.0/token",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"grant_type\": \"player\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"client_id\": \"{{oauth_client_id}}\",\n  \"client_secret\": \"{{oauth_client_secret}}\",\n  \"deviceInformation\": {\n    \"ip\": \"127.0.0.1\",\n    \"userAgent\": \"Mozilla/5.0\"\n  }\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code >= 300) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 600));",
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.collectionVariables.set('access_token', pm.response.json().access_token);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "GET /wallet/balances (before)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": "{{baseUrl}}/wallet/balances"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code >= 300) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 600));",
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "const eur = (pm.response.json().balances || []).find(b => b.currency === 'EUR') || {};",
+              "console.log('before EUR: ' + JSON.stringify(eur));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "POST /payment (deposit, no bonusIds)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": "{{baseUrl}}/payment",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"paymentInformation\": {\n    \"paymentConfigurationId\": \"{{paymentConfigurationId}}\",\n    \"holder\": \"{{cardHolder}}\",\n    \"number\": \"{{cardNumber}}\",\n    \"expirationDate\": {\n      \"month\": \"{{cardMonth}}\",\n      \"year\": \"{{cardYear}}\"\n    },\n    \"cvv\": \"{{cardCvv}}\",\n    \"reusable\": true\n  },\n  \"amount\": \"{{depositAmount}}\",\n  \"ip\": \"138.199.14.138\",\n  \"userAgent\": \"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv: 81.0) Gecko/20100101 Firefox/81.0)\",\n  \"successUrl\": \"https://example.com/callback/success\",\n  \"failureUrl\": \"https://example.com/callback/failure\",\n  \"additionalData\": {\n    \"seonSession\": \"{{seonSession}}\",\n    \"browserAcceptHeader\": \"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\",\n    \"browserJavaEnabled\": true,\n    \"browserLanguage\": \"en\",\n    \"browserColorDepth\": \"24\",\n    \"browserScreenHeight\": \"1200\",\n    \"browserScreenWidth\": \"1920\",\n    \"browserTimezone\": \"-120\"\n  }\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code >= 300) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 600));",
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "console.log('payment response: ' + pm.response.text().slice(0, 800));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "GET /wallet/balances (after)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": "{{baseUrl}}/wallet/balances"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code >= 300) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 600));",
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "const eur = (pm.response.json().balances || []).find(b => b.currency === 'EUR') || {};",
+              "console.log('after EUR: ' + JSON.stringify(eur));"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://gateway.preprod-1.octopodev.com"
+    },
+    {
+      "key": "depositAmount",
+      "value": "10"
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    }
+  ]
+}

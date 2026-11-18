@@ -1,0 +1,620 @@
+{
+  "info": {
+    "name": "CLS-4337-CLS-4338 pp1 free-round win for a bonus in another currency",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1 BO: USD free-round bonus offered to the EUR player",
+      "item": [
+        {
+          "name": "BO token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "player wallets before",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/wallets"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const w = c => pm.response.json().find(x => x.currency === c);",
+                  "console.log(JSON.stringify(pm.response.json()));",
+                  "",
+                  "pm.test('EUR wallet exists', () => pm.expect(w('EUR')).to.be.ok);",
+                  "pm.collectionVariables.set('eurRealBefore', w('EUR').realBalance);",
+                  "const pad = n => String(n).padStart(2, '0');",
+                  "const d = new Date(Date.now() - 60 * 1000);",
+                  "pm.collectionVariables.set('testFrom', `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`);",
+                  "console.log('testFrom', pm.collectionVariables.get('testFrom'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "create free-round bonus configuration in USD (CGA game)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} CGA fr USD\",\n  \"displayName\": \"{{runTag}} CGA fr USD\",\n  \"type\": \"free_rounds\",\n  \"model\": \"direct\",\n  \"offeringMethod\": \"manual\",\n  \"currency\": \"{{bonusCurrency}}\",\n  \"reason\": \"test\",\n  \"validDuringDays\": 3,\n  \"offerValidFor\": 2,\n  \"claimingEvent\": \"direct\",\n  \"freeRoundConfiguration\": {\n    \"freeRoundsGameGateway\": \"{{gameGatewayId}}\",\n    \"freeRoundsGameStudio\": \"{{gameStudioId}}\",\n    \"gameIds\": [\n      {\n        \"id\": \"{{gameId}}\"\n      }\n    ],\n    \"amount\": \"{{freeRoundBet}}\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('bonusConfigId', pm.response.json().id);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('runTag')) pm.collectionVariables.set('runTag', 'CLS-4338-' + Date.now());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "enable it",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configuration/{{bonusConfigId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"enabled\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('enabled', () => pm.expect(pm.response.json().status).to.eql('enabled'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "offer it to the player",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/bonus_configuration/{{bonusConfigId}}/offer",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"playerId\": \"{{playerId}}\",\n  \"freeRoundsRoundCount\": \"{{roundCount}}\",\n  \"message\": \"QA CLS-4338\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('offered', () => pm.expect(j.status).to.eql('offered'));",
+                  "pm.collectionVariables.set('bonusId', j.id);",
+                  "console.log('bonusId', j.id);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 GW: player claims it and launches the CGA game in EUR",
+      "item": [
+        {
+          "name": "Player token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"player\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"client_id\": \"{{oauth_client_id}}\",\n  \"client_secret\": \"{{oauth_client_secret}}\",\n  \"deviceInformation\": {\n    \"ip\": \"{{launchIp}}\",\n    \"userAgent\": \"Mozilla/5.0\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "list bonuses",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/bonuses"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const list = pm.response.json().bonus || pm.response.json();",
+                  "const want = String(pm.collectionVariables.get('bonusId'));",
+                  "const b = list.find(x => String(x.id) === want || String(x.id).endsWith('_' + want));",
+                  "pm.test('bonus listed', () => pm.expect(b).to.not.be.undefined);",
+                  "if (b) pm.collectionVariables.set('gwBonusId', String(b.id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "claim it",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/bonuses/claim",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bonusIds\": [\n    \"{{gwBonusId}}\"\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('claimed', () => pm.expect(pm.response.json()[0].status).to.eql('claimed'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "launch the game (open gameUrl in a browser and play every free round)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/en/game/{{gameId}}/launch",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ip\": \"{{launchIp}}\",\n  \"device\": \"desktop\",\n  \"lobbyUrl\": \"http://localhost\",\n  \"depositUrl\": \"http://localhost\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const m = (pm.response.json().html || '').match(/src=\"([^\"]+)\"/);",
+                  "pm.test('game url in launch response', () => pm.expect(m).to.not.be.null);",
+                  "if (m) { const url = m[1].replace(/&amp;/g, '&'); pm.collectionVariables.set('gameLaunchUrl', url); console.log('OPEN IN BROWSER:', url); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 BO: claim created the USD wallet",
+      "item": [
+        {
+          "name": "BO token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "player wallets after claim",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/wallets"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const w = c => pm.response.json().find(x => x.currency === c);",
+                  "console.log(JSON.stringify(pm.response.json()));",
+                  "",
+                  "pm.test('USD wallet created by the claim', () => pm.expect(w('USD')).to.be.ok);",
+                  "pm.test('EUR wallet still there', () => pm.expect(w('EUR')).to.be.ok);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4 BO verify (after playing the free rounds)",
+      "item": [
+        {
+          "name": "BO token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "player rounds of the game since the test started",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game-rounds",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"limit\": 50,\n  \"order\": {\"field\": \"id\", \"direction\": \"desc\"},\n  \"filter\": {\n    \"playerIds\": [{{playerId}}],\n    \"createdAtRanges\": [{\"from\": \"{{testFrom}}\", \"to\": \"{{testTo}}\"}]\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const rounds = pm.response.json().filter(r => !r.game || String(r.game.id) === String(pm.collectionVariables.get('gameId')));",
+                  "console.log('rounds', rounds.map(r => `${r.id} ${r.game && r.game.name}`).join(' | '));",
+                  "pm.test('player has rounds of the game in the window', () => pm.expect(rounds.length).to.be.above(0));",
+                  "pm.collectionVariables.set('roundIds', JSON.stringify(rounds.map(r => r.id)));"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const pad = n => String(n).padStart(2, '0');",
+                  "const fmt = d => `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;",
+                  "if (!pm.variables.get('testTo')) pm.collectionVariables.set('testTo', fmt(new Date(Date.now() + 600 * 1000)));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "transactions of those rounds",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game-transactions",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filter\": {\"gameRoundIds\": {{roundIds}}}\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const txs = pm.response.json();",
+                  "console.log(JSON.stringify(txs.map(t => ({id: t.id, type: t.type, status: t.status, amount: t.amount, currency: t.currency, errors: t.errors}))));",
+                  "pm.test('no failed transaction in the free-round rounds', () => pm.expect(txs.filter(t => t.status === 'failure')).to.have.length(0));",
+                  "pm.test('the free-round credit is there and succeeded', () => pm.expect(txs.filter(t => t.status === 'success' && t.type !== 'bet').length).to.be.above(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "player wallets: win landed on the USD bonus, EUR untouched",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/wallets"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const w = c => pm.response.json().find(x => x.currency === c);",
+                  "console.log(JSON.stringify(pm.response.json()));",
+                  "",
+                  "pm.test('EUR real balance unchanged', () => pm.expect(w('EUR').realBalance).to.eql(Number(pm.variables.get('eurRealBefore'))));",
+                  "console.log('USD wallet after', JSON.stringify(w('USD')));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "BO_baseUrl",
+      "value": ""
+    },
+    {
+      "key": "baseUrl",
+      "value": ""
+    },
+    {
+      "key": "domainId",
+      "value": "56"
+    },
+    {
+      "key": "playerId",
+      "value": "282570"
+    },
+    {
+      "key": "launchIp",
+      "value": "87.32.0.1"
+    },
+    {
+      "key": "gameId",
+      "value": "72631"
+    },
+    {
+      "key": "gameGatewayId",
+      "value": "52"
+    },
+    {
+      "key": "gameStudioId",
+      "value": "1765"
+    },
+    {
+      "key": "bonusCurrency",
+      "value": "USD"
+    },
+    {
+      "key": "freeRoundBet",
+      "value": "1"
+    },
+    {
+      "key": "roundCount",
+      "value": "10"
+    },
+    {
+      "key": "runTag",
+      "value": ""
+    },
+    {
+      "key": "BO_access_token",
+      "value": ""
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "bonusConfigId",
+      "value": ""
+    },
+    {
+      "key": "bonusId",
+      "value": ""
+    },
+    {
+      "key": "gwBonusId",
+      "value": ""
+    },
+    {
+      "key": "gameLaunchUrl",
+      "value": ""
+    },
+    {
+      "key": "testFrom",
+      "value": ""
+    },
+    {
+      "key": "testTo",
+      "value": ""
+    },
+    {
+      "key": "eurRealBefore",
+      "value": ""
+    },
+    {
+      "key": "roundIds",
+      "value": ""
+    }
+  ]
+}

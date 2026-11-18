@@ -1,0 +1,1678 @@
+{
+  "info": {
+    "name": "CLS-4163 Reward offering reasons (promotion)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// derived names, computed once per run, before signing (a request-level script would run after the signature)",
+          "if (!pm.collectionVariables.get('runTag')) {",
+          "  const t = Date.now().toString(36).slice(-6);",
+          "  pm.collectionVariables.set('runTag', t);",
+          "  pm.collectionVariables.set('reasonName', 'VIP anniversary ' + t);",
+          "  pm.collectionVariables.set('dupName', 'Dup ' + t);",
+          "  pm.collectionVariables.set('dupLower', ('Dup ' + t).toLowerCase());",
+          "  pm.collectionVariables.set('delName', 'Del ' + t);",
+          "  pm.collectionVariables.set('tmpName', 'Tmp ' + t);",
+          "  pm.collectionVariables.set('name64', ('L64 ' + t + ' ' + 'x'.repeat(64)).slice(0, 64));",
+          "  pm.collectionVariables.set('name65', ('L65 ' + t + ' ' + 'x'.repeat(65)).slice(0, 65));",
+          "  pm.collectionVariables.set('reason65', 'r'.repeat(65));",
+          "  pm.collectionVariables.set('replayKey', 'cls4163-replay-' + t);",
+          "}",
+          "const cryptoJs = require('crypto-js');",
+          "// guard signature for direct calls to wallet/promotion/game (DEV-ONLY)",
+          "const url = pm.variables.replaceIn(pm.request.url.toString());",
+          "const m = url.match(/^https?:\\/\\/([^\\/:]+)(?::(\\d+))?([^?]*)/);",
+          "if (m && ['88','99','89'].includes(m[2] || '')) {",
+          "  const method = pm.request.method.toUpperCase();",
+          "  let data = method + m[1] + decodeURIComponent(m[3]);",
+          "  if (['POST','PUT','PATCH'].includes(method)) {",
+          "    const body = (pm.request.body && pm.request.body.raw) ? pm.variables.replaceIn(pm.request.body.raw) : '';",
+          "    data += cryptoJs.MD5(body).toString();",
+          "  }",
+          "  pm.request.headers.upsert({ key: 'x-guard-secret', value: cryptoJs.HmacSHA256(data, pm.environment.get('guardKey')).toString() });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "promotionUrl",
+      "value": "http://localhost:99"
+    },
+    {
+      "key": "BO_baseUrl",
+      "value": "http://localhost:84"
+    },
+    {
+      "key": "domainId",
+      "value": "1"
+    },
+    {
+      "key": "otherDomainId",
+      "value": "2"
+    },
+    {
+      "key": "playerId",
+      "value": "1"
+    },
+    {
+      "key": "currency",
+      "value": "EUR"
+    },
+    {
+      "key": "sourceUserId",
+      "value": "1"
+    },
+    {
+      "key": "sourceScenarioId",
+      "value": "12"
+    },
+    {
+      "key": "preMigrationGiftId",
+      "value": "1"
+    },
+    {
+      "key": "BO_oauth_client_id",
+      "value": ""
+    },
+    {
+      "key": "BO_oauth_client_secret",
+      "value": ""
+    },
+    {
+      "key": "BO_username",
+      "value": ""
+    },
+    {
+      "key": "BO_password",
+      "value": ""
+    },
+    {
+      "key": "runTag",
+      "value": ""
+    },
+    {
+      "key": "reasonName",
+      "value": ""
+    },
+    {
+      "key": "dupName",
+      "value": ""
+    },
+    {
+      "key": "dupLower",
+      "value": ""
+    },
+    {
+      "key": "delName",
+      "value": ""
+    },
+    {
+      "key": "tmpName",
+      "value": ""
+    },
+    {
+      "key": "name64",
+      "value": ""
+    },
+    {
+      "key": "name65",
+      "value": ""
+    },
+    {
+      "key": "reason65",
+      "value": ""
+    },
+    {
+      "key": "replayKey",
+      "value": ""
+    },
+    {
+      "key": "reasonId",
+      "value": ""
+    },
+    {
+      "key": "otherDomainReasonId",
+      "value": ""
+    },
+    {
+      "key": "deletedReasonId",
+      "value": ""
+    },
+    {
+      "key": "deletedAtSeen",
+      "value": ""
+    },
+    {
+      "key": "reasonCount",
+      "value": ""
+    },
+    {
+      "key": "giftWithReasonId",
+      "value": ""
+    },
+    {
+      "key": "giftCount",
+      "value": ""
+    },
+    {
+      "key": "tmpReasonId",
+      "value": ""
+    },
+    {
+      "key": "replayGiftId",
+      "value": ""
+    },
+    {
+      "key": "BO_access_token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Migration",
+      "item": [
+        {
+          "name": "Seeded reasons in the brand",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reasons"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const names = [].concat(pm.response.json()).map(r => r.name);",
+                  "['Birthday', 'Christmas', 'Easter', \"Valentine's day\"].forEach(n =>",
+                  "  pm.test('seeded ' + n, () => pm.expect(names).to.include(n)));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Gift from before the migration is gone",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/gifts?filter[ids][]={{preMigrationGiftId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('no gift from before the migration', () => pm.expect(pm.response.json()).to.have.lengthOf(0));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Create reason",
+      "item": [
+        {
+          "name": "Create valid",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reason",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{reasonName}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const r = pm.response.json();",
+                  "pm.test('deletedAt null', () => pm.expect(r.deletedAt).to.equal(null));",
+                  "pm.test('name kept', () => pm.expect(r.name).to.equal(pm.collectionVariables.get('reasonName')));",
+                  "pm.collectionVariables.set('reasonId', r.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Created reason is listed",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reasons"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const r = [].concat(pm.response.json()).find(x => x.id === Number(pm.collectionVariables.get('reasonId')));",
+                  "pm.test('listed', () => pm.expect(r).to.be.an('object'));",
+                  "pm.test('active', () => pm.expect(r.deletedAt).to.equal(null));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create empty name",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reason",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('validation error on name', () => pm.expect(pm.response.json().errors).to.have.property('name'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create blank name",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reason",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"   \"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('validation error on name', () => pm.expect(pm.response.json().errors).to.have.property('name'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create 64 chars",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reason",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{name64}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create 65 chars",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reason",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{name65}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('validation error on name', () => pm.expect(pm.response.json().errors).to.have.property('name'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Dup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reason",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{dupName}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Dup again, same case",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reason",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{dupName}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('validation error on name', () => pm.expect(pm.response.json().errors).to.have.property('name'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Dup again, other case",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reason",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{dupLower}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('validation error on name', () => pm.expect(pm.response.json().errors).to.have.property('name'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create same name in another brand",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{otherDomainId}}/reward-offering-reason",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{reasonName}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "pm.collectionVariables.set('otherDomainReasonId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Delete reason",
+      "item": [
+        {
+          "name": "Create Del",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reason",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{delName}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "pm.collectionVariables.set('deletedReasonId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Del",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reason/{{deletedReasonId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Deleted reason listed with deletedAt",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reasons"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const r = [].concat(pm.response.json()).find(x => x.id === Number(pm.collectionVariables.get('deletedReasonId')));",
+                  "pm.test('still listed', () => pm.expect(r).to.be.an('object'));",
+                  "pm.test('deletedAt set', () => pm.expect(r.deletedAt).to.be.a('string'));",
+                  "pm.collectionVariables.set('deletedAtSeen', r ? r.deletedAt : '');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Del again",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reason/{{deletedReasonId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "deletedAt unchanged",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reasons"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const r = [].concat(pm.response.json()).find(x => x.id === Number(pm.collectionVariables.get('deletedReasonId')));",
+                  "pm.test('deletedAt unchanged', () => pm.expect(r.deletedAt).to.equal(pm.collectionVariables.get('deletedAtSeen')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete another brand's reason",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reason/{{otherDomainReasonId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete unknown id",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reason/999999999"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Recreate Del",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reason",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{delName}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "pm.test('new id', () => pm.expect(pm.response.json().id).to.not.equal(Number(pm.collectionVariables.get('deletedReasonId'))));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. List reasons",
+      "item": [
+        {
+          "name": "List: brand only, deleted included",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reasons"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const ids = [].concat(pm.response.json()).map(r => r.id);",
+                  "pm.test('active listed', () => pm.expect(ids).to.include(Number(pm.collectionVariables.get('reasonId'))));",
+                  "pm.test('deleted listed', () => pm.expect(ids).to.include(Number(pm.collectionVariables.get('deletedReasonId'))));",
+                  "pm.test('other brand absent', () => pm.expect(ids).to.not.include(Number(pm.collectionVariables.get('otherDomainReasonId'))));",
+                  "pm.collectionVariables.set('reasonCount', ids.length);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List: limit 1",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reasons?limit=1"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('one item', () => pm.expect(pm.response.json()).to.have.lengthOf(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List: unknown order field",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reasons?order[field]=nope&order[direction]=asc"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List: order id asc",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reasons?order[field]=id&order[direction]=asc"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function inOrder(items, field, dir) {",
+                  "  const cmp = (a, b) => {",
+                  "    if (a === b) return 0;",
+                  "    if (a === null) return -1;",
+                  "    if (b === null) return 1;",
+                  "    if (typeof a === 'number') return a - b;",
+                  "    if (field === 'name') return a.localeCompare(b, undefined, { sensitivity: 'base' });",
+                  "    return a < b ? -1 : 1;",
+                  "  };",
+                  "  for (let k = 1; k < items.length; k++) {",
+                  "    const c = cmp(items[k - 1][field], items[k][field]);",
+                  "    if (dir === 'asc' ? c > 0 : c < 0) return false;",
+                  "  }",
+                  "  return true;",
+                  "}",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ordered by id asc', () => pm.expect(inOrder(pm.response.json(), 'id', 'asc')).to.equal(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List: order id desc",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reasons?order[field]=id&order[direction]=desc"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function inOrder(items, field, dir) {",
+                  "  const cmp = (a, b) => {",
+                  "    if (a === b) return 0;",
+                  "    if (a === null) return -1;",
+                  "    if (b === null) return 1;",
+                  "    if (typeof a === 'number') return a - b;",
+                  "    if (field === 'name') return a.localeCompare(b, undefined, { sensitivity: 'base' });",
+                  "    return a < b ? -1 : 1;",
+                  "  };",
+                  "  for (let k = 1; k < items.length; k++) {",
+                  "    const c = cmp(items[k - 1][field], items[k][field]);",
+                  "    if (dir === 'asc' ? c > 0 : c < 0) return false;",
+                  "  }",
+                  "  return true;",
+                  "}",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ordered by id desc', () => pm.expect(inOrder(pm.response.json(), 'id', 'desc')).to.equal(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List: order name asc",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reasons?order[field]=name&order[direction]=asc"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function inOrder(items, field, dir) {",
+                  "  const cmp = (a, b) => {",
+                  "    if (a === b) return 0;",
+                  "    if (a === null) return -1;",
+                  "    if (b === null) return 1;",
+                  "    if (typeof a === 'number') return a - b;",
+                  "    if (field === 'name') return a.localeCompare(b, undefined, { sensitivity: 'base' });",
+                  "    return a < b ? -1 : 1;",
+                  "  };",
+                  "  for (let k = 1; k < items.length; k++) {",
+                  "    const c = cmp(items[k - 1][field], items[k][field]);",
+                  "    if (dir === 'asc' ? c > 0 : c < 0) return false;",
+                  "  }",
+                  "  return true;",
+                  "}",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ordered by name asc', () => pm.expect(inOrder(pm.response.json(), 'name', 'asc')).to.equal(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List: order name desc",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reasons?order[field]=name&order[direction]=desc"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function inOrder(items, field, dir) {",
+                  "  const cmp = (a, b) => {",
+                  "    if (a === b) return 0;",
+                  "    if (a === null) return -1;",
+                  "    if (b === null) return 1;",
+                  "    if (typeof a === 'number') return a - b;",
+                  "    if (field === 'name') return a.localeCompare(b, undefined, { sensitivity: 'base' });",
+                  "    return a < b ? -1 : 1;",
+                  "  };",
+                  "  for (let k = 1; k < items.length; k++) {",
+                  "    const c = cmp(items[k - 1][field], items[k][field]);",
+                  "    if (dir === 'asc' ? c > 0 : c < 0) return false;",
+                  "  }",
+                  "  return true;",
+                  "}",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ordered by name desc', () => pm.expect(inOrder(pm.response.json(), 'name', 'desc')).to.equal(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List: order createdAt asc",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reasons?order[field]=createdAt&order[direction]=asc"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function inOrder(items, field, dir) {",
+                  "  const cmp = (a, b) => {",
+                  "    if (a === b) return 0;",
+                  "    if (a === null) return -1;",
+                  "    if (b === null) return 1;",
+                  "    if (typeof a === 'number') return a - b;",
+                  "    if (field === 'name') return a.localeCompare(b, undefined, { sensitivity: 'base' });",
+                  "    return a < b ? -1 : 1;",
+                  "  };",
+                  "  for (let k = 1; k < items.length; k++) {",
+                  "    const c = cmp(items[k - 1][field], items[k][field]);",
+                  "    if (dir === 'asc' ? c > 0 : c < 0) return false;",
+                  "  }",
+                  "  return true;",
+                  "}",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ordered by createdAt asc', () => pm.expect(inOrder(pm.response.json(), 'createdAt', 'asc')).to.equal(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List: order createdAt desc",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reasons?order[field]=createdAt&order[direction]=desc"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function inOrder(items, field, dir) {",
+                  "  const cmp = (a, b) => {",
+                  "    if (a === b) return 0;",
+                  "    if (a === null) return -1;",
+                  "    if (b === null) return 1;",
+                  "    if (typeof a === 'number') return a - b;",
+                  "    if (field === 'name') return a.localeCompare(b, undefined, { sensitivity: 'base' });",
+                  "    return a < b ? -1 : 1;",
+                  "  };",
+                  "  for (let k = 1; k < items.length; k++) {",
+                  "    const c = cmp(items[k - 1][field], items[k][field]);",
+                  "    if (dir === 'asc' ? c > 0 : c < 0) return false;",
+                  "  }",
+                  "  return true;",
+                  "}",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ordered by createdAt desc', () => pm.expect(inOrder(pm.response.json(), 'createdAt', 'desc')).to.equal(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List: order updatedAt asc",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reasons?order[field]=updatedAt&order[direction]=asc"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function inOrder(items, field, dir) {",
+                  "  const cmp = (a, b) => {",
+                  "    if (a === b) return 0;",
+                  "    if (a === null) return -1;",
+                  "    if (b === null) return 1;",
+                  "    if (typeof a === 'number') return a - b;",
+                  "    if (field === 'name') return a.localeCompare(b, undefined, { sensitivity: 'base' });",
+                  "    return a < b ? -1 : 1;",
+                  "  };",
+                  "  for (let k = 1; k < items.length; k++) {",
+                  "    const c = cmp(items[k - 1][field], items[k][field]);",
+                  "    if (dir === 'asc' ? c > 0 : c < 0) return false;",
+                  "  }",
+                  "  return true;",
+                  "}",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ordered by updatedAt asc', () => pm.expect(inOrder(pm.response.json(), 'updatedAt', 'asc')).to.equal(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List: order updatedAt desc",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reasons?order[field]=updatedAt&order[direction]=desc"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function inOrder(items, field, dir) {",
+                  "  const cmp = (a, b) => {",
+                  "    if (a === b) return 0;",
+                  "    if (a === null) return -1;",
+                  "    if (b === null) return 1;",
+                  "    if (typeof a === 'number') return a - b;",
+                  "    if (field === 'name') return a.localeCompare(b, undefined, { sensitivity: 'base' });",
+                  "    return a < b ? -1 : 1;",
+                  "  };",
+                  "  for (let k = 1; k < items.length; k++) {",
+                  "    const c = cmp(items[k - 1][field], items[k][field]);",
+                  "    if (dir === 'asc' ? c > 0 : c < 0) return false;",
+                  "  }",
+                  "  return true;",
+                  "}",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ordered by updatedAt desc', () => pm.expect(inOrder(pm.response.json(), 'updatedAt', 'desc')).to.equal(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List: order deletedAt asc",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reasons?order[field]=deletedAt&order[direction]=asc"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function inOrder(items, field, dir) {",
+                  "  const cmp = (a, b) => {",
+                  "    if (a === b) return 0;",
+                  "    if (a === null) return -1;",
+                  "    if (b === null) return 1;",
+                  "    if (typeof a === 'number') return a - b;",
+                  "    if (field === 'name') return a.localeCompare(b, undefined, { sensitivity: 'base' });",
+                  "    return a < b ? -1 : 1;",
+                  "  };",
+                  "  for (let k = 1; k < items.length; k++) {",
+                  "    const c = cmp(items[k - 1][field], items[k][field]);",
+                  "    if (dir === 'asc' ? c > 0 : c < 0) return false;",
+                  "  }",
+                  "  return true;",
+                  "}",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ordered by deletedAt asc', () => pm.expect(inOrder(pm.response.json(), 'deletedAt', 'asc')).to.equal(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List: order deletedAt desc",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reasons?order[field]=deletedAt&order[direction]=desc"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function inOrder(items, field, dir) {",
+                  "  const cmp = (a, b) => {",
+                  "    if (a === b) return 0;",
+                  "    if (a === null) return -1;",
+                  "    if (b === null) return 1;",
+                  "    if (typeof a === 'number') return a - b;",
+                  "    if (field === 'name') return a.localeCompare(b, undefined, { sensitivity: 'base' });",
+                  "    return a < b ? -1 : 1;",
+                  "  };",
+                  "  for (let k = 1; k < items.length; k++) {",
+                  "    const c = cmp(items[k - 1][field], items[k][field]);",
+                  "    if (dir === 'asc' ? c > 0 : c < 0) return false;",
+                  "  }",
+                  "  return true;",
+                  "}",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ordered by deletedAt desc', () => pm.expect(inOrder(pm.response.json(), 'deletedAt', 'desc')).to.equal(true));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Offer gift",
+      "item": [
+        {
+          "name": "Offer with active reason",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/player/{{playerId}}/gift",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"CLS-4163 {{runTag}}\",\n  \"amount\": \"1.00\",\n  \"currency\": \"{{currency}}\",\n  \"sourceUserId\": {{sourceUserId}},\n  \"reasonId\": {{reasonId}}\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const g = pm.response.json();",
+                  "pm.test('reasonId', () => pm.expect(g.reasonId).to.equal(Number(pm.collectionVariables.get('reasonId'))));",
+                  "pm.test('reasonName', () => pm.expect(g.reasonName).to.equal(pm.collectionVariables.get('reasonName')));",
+                  "pm.test('no reason key', () => pm.expect(g).to.not.have.property('reason'));",
+                  "pm.collectionVariables.set('giftWithReasonId', g.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Offer without reasonId",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/player/{{playerId}}/gift",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"CLS-4163 {{runTag}}\",\n  \"amount\": \"1.00\",\n  \"currency\": \"{{currency}}\",\n  \"sourceUserId\": {{sourceUserId}}\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const g = pm.response.json();",
+                  "pm.test('reasonId null', () => pm.expect(g.reasonId).to.equal(null));",
+                  "pm.test('reasonName null', () => pm.expect(g.reasonName).to.equal(null));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Offer with reasonId null",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/player/{{playerId}}/gift",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"CLS-4163 {{runTag}}\",\n  \"amount\": \"1.00\",\n  \"currency\": \"{{currency}}\",\n  \"sourceUserId\": {{sourceUserId}},\n  \"reasonId\": null\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "pm.test('reasonId null', () => pm.expect(pm.response.json().reasonId).to.equal(null));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Count gifts before rejections",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/gifts?filter[ownerIds][]={{playerId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.collectionVariables.set('giftCount', pm.response.json().length);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Offer with unknown reasonId",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/player/{{playerId}}/gift",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"CLS-4163 {{runTag}}\",\n  \"amount\": \"1.00\",\n  \"currency\": \"{{currency}}\",\n  \"sourceUserId\": {{sourceUserId}},\n  \"reasonId\": 999999999\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('validation error on reasonId', () => pm.expect(pm.response.json().errors).to.have.property('reasonId'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Offer with deleted reasonId",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/player/{{playerId}}/gift",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"CLS-4163 {{runTag}}\",\n  \"amount\": \"1.00\",\n  \"currency\": \"{{currency}}\",\n  \"sourceUserId\": {{sourceUserId}},\n  \"reasonId\": {{deletedReasonId}}\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('validation error on reasonId', () => pm.expect(pm.response.json().errors).to.have.property('reasonId'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Offer with another brand's reasonId",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/player/{{playerId}}/gift",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"CLS-4163 {{runTag}}\",\n  \"amount\": \"1.00\",\n  \"currency\": \"{{currency}}\",\n  \"sourceUserId\": {{sourceUserId}},\n  \"reasonId\": {{otherDomainReasonId}}\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('validation error on reasonId', () => pm.expect(pm.response.json().errors).to.have.property('reasonId'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "No gift created by rejections",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/gifts?filter[ownerIds][]={{playerId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('same count', () => pm.expect(pm.response.json().length).to.equal(Number(pm.collectionVariables.get('giftCount'))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Offer with legacy reason only",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/player/{{playerId}}/gift",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"CLS-4163 {{runTag}}\",\n  \"amount\": \"1.00\",\n  \"currency\": \"{{currency}}\",\n  \"sourceUserId\": {{sourceUserId}},\n  \"reason\": \"birthday\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "pm.test('legacy reason ignored', () => pm.expect(pm.response.json().reasonId).to.equal(null));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Offer with legacy reason over 64 chars",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/player/{{playerId}}/gift",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"CLS-4163 {{runTag}}\",\n  \"amount\": \"1.00\",\n  \"currency\": \"{{currency}}\",\n  \"sourceUserId\": {{sourceUserId}},\n  \"reason\": \"{{reason65}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Offer by scenario, no reason",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/player/{{playerId}}/gift",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"CLS-4163 {{runTag}}\",\n  \"amount\": \"1.00\",\n  \"currency\": \"{{currency}}\",\n  \"sourceScenarioId\": {{sourceScenarioId}}\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "pm.test('reasonId null', () => pm.expect(pm.response.json().reasonId).to.equal(null));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Deleted reason on gifts",
+      "item": [
+        {
+          "name": "Create Tmp",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reason",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{tmpName}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "pm.collectionVariables.set('tmpReasonId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Offer with Tmp and idempotency key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/player/{{playerId}}/gift",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"CLS-4163 {{runTag}}\",\n  \"amount\": \"1.00\",\n  \"currency\": \"{{currency}}\",\n  \"sourceScenarioId\": {{sourceScenarioId}},\n  \"reasonId\": {{tmpReasonId}},\n  \"idempotencyKey\": \"{{replayKey}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "pm.collectionVariables.set('replayGiftId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Tmp",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/reward-offering-reason/{{tmpReasonId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Replay after Tmp deleted",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/player/{{playerId}}/gift",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"CLS-4163 {{runTag}}\",\n  \"amount\": \"1.00\",\n  \"currency\": \"{{currency}}\",\n  \"sourceScenarioId\": {{sourceScenarioId}},\n  \"reasonId\": {{tmpReasonId}},\n  \"idempotencyKey\": \"{{replayKey}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const g = pm.response.json();",
+                  "pm.test('original gift', () => pm.expect(g.id).to.equal(Number(pm.collectionVariables.get('replayGiftId'))));",
+                  "pm.test('deleted reason name', () => pm.expect(g.reasonName).to.equal(pm.collectionVariables.get('tmpName')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Gift list shows deleted reason",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{promotionUrl}}/api/domain/{{domainId}}/gifts?filter[ids][]={{replayGiftId}}&filter[ids][]={{giftWithReasonId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const gs = [].concat(pm.response.json());",
+                  "const replay = gs.find(g => g.id === Number(pm.collectionVariables.get('replayGiftId')));",
+                  "const live = gs.find(g => g.id === Number(pm.collectionVariables.get('giftWithReasonId')));",
+                  "pm.test('deleted reason name kept', () => pm.expect(replay.reasonName).to.equal(pm.collectionVariables.get('tmpName')));",
+                  "pm.test('active reason name', () => pm.expect(live.reasonName).to.equal(pm.collectionVariables.get('reasonName')));",
+                  "pm.test('no reason key', () => gs.forEach(g => pm.expect(g).to.not.have.property('reason')));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Current backoffice (deploy window)",
+      "item": [
+        {
+          "name": "BO token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "BO offer gift with legacy reason",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/gift",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"CLS-4163 BO {{runTag}}\",\n  \"value\": 1,\n  \"currency\": \"{{currency}}\",\n  \"reason\": \"birthday\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "BO gift list",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/gifts"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

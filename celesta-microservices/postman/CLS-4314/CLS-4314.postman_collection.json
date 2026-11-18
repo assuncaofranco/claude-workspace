@@ -1,0 +1,809 @@
+{
+ "info": {
+  "name": "CLS-4314 local",
+  "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+ },
+ "item": [
+  {
+   "name": "1 Setup: one deposit tier per currency, each player opts in",
+   "item": [
+    {
+     "name": "BO token",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{BO_baseUrl}}/oauth/2.0/token",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+         "pm.test('status 200', () => pm.response.to.have.status(200));",
+         "pm.environment.set('BO_access_token', pm.response.json().access_token);"
+        ]
+       }
+      },
+      {
+       "listen": "prerequest",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "if (!pm.environment.get('runTag')) {",
+         "  const t = Date.now(); pm.environment.set('runTag', 'qa4314-' + t);",
+         "  const d = n => new Date(t + n*86400000).toISOString().slice(0,10);",
+         "  pm.environment.set('startDate', d(-1) + ' 00:00:00'); pm.environment.set('endDate', d(30) + ' 23:59:59');",
+         "}"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "POST reward-configuration EUR",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{BO_access_token}}"
+       }
+      ],
+      "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configuration",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"name\": \"{{runTag}} EUR\",\n  \"displayName\": \"{{runTag}} EUR\",\n  \"type\": \"free\",\n  \"model\": \"direct\",\n  \"offeringMethod\": \"manual\",\n  \"currency\": \"EUR\",\n  \"validDuringDays\": \"7\",\n  \"claimingEvent\": \"automatic\",\n  \"offerAmount\": \"10\",\n  \"offerValidFor\": 14\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+         "pm.test('status 200', () => pm.response.to.have.status(200));",
+         "pm.environment.set('rcEUR', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "PATCH enable reward-configuration EUR",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{BO_access_token}}"
+       }
+      ],
+      "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configuration/{{rcEUR}}",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"status\": \"enabled\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+         "pm.test('status 200', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "POST deposit_tier EUR",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{BO_access_token}}"
+       }
+      ],
+      "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"name\": \"{{runTag}} EUR\",\n  \"currency\": \"EUR\",\n  \"startDate\": \"{{startDate}}\",\n  \"endDate\": \"{{endDate}}\",\n  \"segmentIds\": [],\n  \"engagementModel\": \"manual\",\n  \"engagementCode\": \"{{runTag}}-EUR\",\n  \"type\": \"deposit_tier\",\n  \"playerPromotionLimit\": 6\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+         "pm.test('status 200', () => pm.response.to.have.status(200));",
+         "pm.environment.set('pcEUR', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "POST tier 0-100 EUR",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{BO_access_token}}"
+       }
+      ],
+      "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration/{{pcEUR}}/reward-aggregators",
+      "body": {
+       "mode": "raw",
+       "raw": "[\n  {\n    \"type\": \"tier\",\n    \"options\": {\n      \"minAmount\": 0,\n      \"maxAmount\": 100\n    },\n    \"rewards\": []\n  }\n]"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+         "pm.test('status 200', () => pm.response.to.have.status(200));",
+         "const j = pm.response.json(); pm.environment.set('agEUR', (Array.isArray(j) ? j[0] : j).id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "POST free_bonus on tier EUR",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{BO_access_token}}"
+       }
+      ],
+      "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration/{{pcEUR}}/reward-aggregator/{{agEUR}}/reward",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"type\": \"free_bonus\",\n  \"rewardConfigurationId\": \"{{rcEUR}}\",\n  \"quantity\": 10,\n  \"options\": {\n    \"upToAmount\": 10\n  }\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+         "pm.test('status 200', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "PATCH enable deposit_tier EUR",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{BO_access_token}}"
+       }
+      ],
+      "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration/{{pcEUR}}",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"status\": \"enabled\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+         "pm.test('status 200', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "POST reward-configuration CAD",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{BO_access_token}}"
+       }
+      ],
+      "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configuration",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"name\": \"{{runTag}} CAD\",\n  \"displayName\": \"{{runTag}} CAD\",\n  \"type\": \"free\",\n  \"model\": \"direct\",\n  \"offeringMethod\": \"manual\",\n  \"currency\": \"CAD\",\n  \"validDuringDays\": \"7\",\n  \"claimingEvent\": \"automatic\",\n  \"offerAmount\": \"10\",\n  \"offerValidFor\": 14\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+         "pm.test('status 200', () => pm.response.to.have.status(200));",
+         "pm.environment.set('rcCAD', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "PATCH enable reward-configuration CAD",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{BO_access_token}}"
+       }
+      ],
+      "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/bonus_configuration/{{rcCAD}}",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"status\": \"enabled\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+         "pm.test('status 200', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "POST deposit_tier CAD",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{BO_access_token}}"
+       }
+      ],
+      "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"name\": \"{{runTag}} CAD\",\n  \"currency\": \"CAD\",\n  \"startDate\": \"{{startDate}}\",\n  \"endDate\": \"{{endDate}}\",\n  \"segmentIds\": [],\n  \"engagementModel\": \"manual\",\n  \"engagementCode\": \"{{runTag}}-CAD\",\n  \"type\": \"deposit_tier\",\n  \"playerPromotionLimit\": 6\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+         "pm.test('status 200', () => pm.response.to.have.status(200));",
+         "pm.environment.set('pcCAD', pm.response.json().id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "POST tier 0-100 CAD",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{BO_access_token}}"
+       }
+      ],
+      "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration/{{pcCAD}}/reward-aggregators",
+      "body": {
+       "mode": "raw",
+       "raw": "[\n  {\n    \"type\": \"tier\",\n    \"options\": {\n      \"minAmount\": 0,\n      \"maxAmount\": 100\n    },\n    \"rewards\": []\n  }\n]"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+         "pm.test('status 200', () => pm.response.to.have.status(200));",
+         "const j = pm.response.json(); pm.environment.set('agCAD', (Array.isArray(j) ? j[0] : j).id);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "POST free_bonus on tier CAD",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{BO_access_token}}"
+       }
+      ],
+      "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration/{{pcCAD}}/reward-aggregator/{{agCAD}}/reward",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"type\": \"free_bonus\",\n  \"rewardConfigurationId\": \"{{rcCAD}}\",\n  \"quantity\": 10,\n  \"options\": {\n    \"upToAmount\": 10\n  }\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+         "pm.test('status 200', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "PATCH enable deposit_tier CAD",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{BO_access_token}}"
+       }
+      ],
+      "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/promotion-configuration/{{pcCAD}}",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"status\": \"enabled\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+         "pm.test('status 200', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "GW token {{userA}}",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/oauth/2.0/token",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"grant_type\": \"player\",\n  \"username\": \"{{userA}}\",\n  \"password\": \"{{password}}\",\n  \"client_id\": \"{{oauth_client_id}}\",\n  \"client_secret\": \"{{oauth_client_secret}}\",\n  \"deviceInformation\": {\n    \"ip\": \"127.0.0.1\",\n    \"userAgent\": \"Mozilla/5.0\"\n  }\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+         "pm.test('status 200', () => pm.response.to.have.status(200));",
+         "pm.environment.set('tokenA', pm.response.json().access_token);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "GW player A opts in (EUR)",
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{tokenA}}"
+       }
+      ],
+      "url": "{{baseUrl}}/promotion-configuration/optin/{{runTag}}-EUR"
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+         "pm.test('status 200', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "GW token {{userB}}",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{baseUrl}}/oauth/2.0/token",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"grant_type\": \"player\",\n  \"username\": \"{{userB}}\",\n  \"password\": \"{{password}}\",\n  \"client_id\": \"{{oauth_client_id}}\",\n  \"client_secret\": \"{{oauth_client_secret}}\",\n  \"deviceInformation\": {\n    \"ip\": \"127.0.0.1\",\n    \"userAgent\": \"Mozilla/5.0\"\n  }\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+         "pm.test('status 200', () => pm.response.to.have.status(200));",
+         "pm.environment.set('tokenB', pm.response.json().access_token);"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "GW player B opts in (CAD)",
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{tokenB}}"
+       }
+      ],
+      "url": "{{baseUrl}}/promotion-configuration/optin/{{runTag}}-CAD"
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+         "pm.test('status 200', () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "2 Compare per-player and domain routes",
+   "event": [
+    {
+     "listen": "prerequest",
+     "script": {
+      "type": "text/javascript",
+      "exec": [
+       "const url = pm.variables.replaceIn(pm.request.url.toString());",
+       "const m = url.match(/^https?:\\/\\/([^\\/:]+)(?::(\\d+))?([^?]*)/);",
+       "if (m && ['88','99','89'].includes(m[2] || '')) {",
+       "  const method = pm.request.method.toUpperCase();",
+       "  let data = method + m[1] + decodeURIComponent(m[3]);",
+       "  if (['POST','PUT','PATCH'].includes(method)) {",
+       "    const body = (pm.request.body && pm.request.body.raw) ? pm.variables.replaceIn(pm.request.body.raw) : '';",
+       "    data += CryptoJS.MD5(body).toString();",
+       "  }",
+       "  pm.request.headers.upsert({ key: 'x-guard-secret', value: CryptoJS.HmacSHA256(data, pm.environment.get('guardKey')).toString() });",
+       "}"
+      ]
+     }
+    }
+   ],
+   "item": [
+    {
+     "name": "Per-player route, player A, both transactions",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{promotionUrl}}/api/domain/{{domainId}}/player/{{playerA}}/rewarding",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"transactionIds\": [\n    \"{{txA}}\",\n    \"{{txB}}\"\n  ],\n  \"event\": \"deposit\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+         "pm.test('status 200', () => pm.response.to.have.status(200));",
+         "const j = pm.response.json(); pm.environment.set('perA', JSON.stringify(j));",
+         "pm.test('player A gets entries for its own deposit', () => pm.expect(j.length).to.be.above(0));",
+         "pm.test('player A gets only its own deposit', () => j.forEach(e => pm.expect(e.transactionId).to.eql(Number(pm.environment.get('txA')))));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Per-player route, player B, both transactions",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{promotionUrl}}/api/domain/{{domainId}}/player/{{playerB}}/rewarding",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"transactionIds\": [\n    \"{{txA}}\",\n    \"{{txB}}\"\n  ],\n  \"event\": \"deposit\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+         "pm.test('status 200', () => pm.response.to.have.status(200));",
+         "const j = pm.response.json(); pm.environment.set('perB', JSON.stringify(j));",
+         "pm.test('player B gets entries for its own deposit', () => pm.expect(j.length).to.be.above(0));",
+         "pm.test('player B gets only its own deposit', () => j.forEach(e => pm.expect(e.transactionId).to.eql(Number(pm.environment.get('txB')))));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Domain route, both pairs: equals the two per-player calls",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{promotionUrl}}/api/domain/{{domainId}}/rewarding",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"transactions\": [\n    {\n      \"transactionId\": \"{{txA}}\",\n      \"playerId\": \"{{playerA}}\"\n    },\n    {\n      \"transactionId\": \"{{txB}}\",\n      \"playerId\": \"{{playerB}}\"\n    }\n  ],\n  \"event\": \"deposit\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+         "pm.test('status 200', () => pm.response.to.have.status(200));",
+         "const key = e => e.transactionId + '|' + e.promotionConfigurationId + '|' + JSON.stringify(e.rewards);",
+         "const j = pm.response.json();",
+         "const expected = JSON.parse(pm.environment.get('perA')).concat(JSON.parse(pm.environment.get('perB'))).map(key).sort();",
+         "pm.test('same entries as the per-player calls, compared as a set', () => pm.expect(j.map(key).sort()).to.eql(expected));",
+         "pm.test('same entry shape as the per-player route', () => j.forEach(e => pm.expect(Object.keys(e).sort()).to.eql(['potentialWinnings','promotionConfigurationId','rewards','transactionId'])));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Domain route, swapped pairs: empty",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{promotionUrl}}/api/domain/{{domainId}}/rewarding",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"transactions\": [\n    {\n      \"transactionId\": \"{{txA}}\",\n      \"playerId\": \"{{playerB}}\"\n    },\n    {\n      \"transactionId\": \"{{txB}}\",\n      \"playerId\": \"{{playerA}}\"\n    }\n  ],\n  \"event\": \"deposit\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+         "pm.test('status 200', () => pm.response.to.have.status(200));",
+         "pm.test('no entry for a transaction under another player', () => pm.expect(pm.response.json()).to.eql([]));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Domain route, other domain: empty",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{promotionUrl}}/api/domain/2/rewarding",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"transactions\": [\n    {\n      \"transactionId\": \"{{txA}}\",\n      \"playerId\": \"{{playerA}}\"\n    }\n  ],\n  \"event\": \"deposit\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+         "pm.test('status 200', () => pm.response.to.have.status(200));",
+         "pm.test('no entry from another domain', () => pm.expect(pm.response.json()).to.eql([]));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Domain route, empty transactions: 400",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{promotionUrl}}/api/domain/{{domainId}}/rewarding",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"transactions\": [],\n  \"event\": \"deposit\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('status 400', () => pm.response.to.have.status(400));",
+         "pm.test('validation body', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_CONSTRAINT'));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "Domain route, entry without playerId: 400",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": "{{promotionUrl}}/api/domain/{{domainId}}/rewarding",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"transactions\": [\n    {\n      \"transactionId\": \"{{txA}}\"\n    }\n  ],\n  \"event\": \"deposit\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test('status 400', () => pm.response.to.have.status(400));"
+        ]
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

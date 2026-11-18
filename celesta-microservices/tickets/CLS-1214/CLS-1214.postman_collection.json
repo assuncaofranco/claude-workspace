@@ -1,0 +1,1569 @@
+{
+  "info": {
+    "name": "CLS-1214 combine withdrawal requests into one payout (entry points only)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Gateway (player) and backoffice only. Credentials are runner variables, never in the file."
+  },
+  "item": [
+    {
+      "name": "0 Auth and discovery (read-only), balance",
+      "item": [
+        {
+          "name": "Player token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"player\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"client_id\": \"{{oauth_client_id}}\",\n  \"client_secret\": \"{{oauth_client_secret}}\",\n  \"deviceInformation\": {\n    \"ip\": \"127.0.0.1\",\n    \"userAgent\": \"Mozilla/5.0\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 400) console.log(pm.request.method + ' ' + pm.request.url.getPath() + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const set = (k, v) => { const x = v === undefined || v === null ? '' : String(v); pm.collectionVariables.set(k, x);",
+                  "  try { pm.environment.set(k, x); } catch (e) { /* no environment selected: the collection variable carries it */ } };",
+                  "set('access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GW payout configurations: pick Bank Transfer (auto), a second one, another method",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/payout/configurations?currency={{currency}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 400) console.log(pm.request.method + ' ' + pm.request.url.getPath() + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const set = (k, v) => { const x = v === undefined || v === null ? '' : String(v); pm.collectionVariables.set(k, x);",
+                  "  try { pm.environment.set(k, x); } catch (e) { /* no environment selected: the collection variable carries it */ } };",
+                  "",
+                  "const list = pm.response.json().list || [];",
+                  "const on = list.filter(c => c.enabled !== false);",
+                  "const auto = on.filter(c => c.method === 'bank_transfer_auto');",
+                  "// methods the payout-delay command never picks up (PayoutDelayCommand::EXCLUDED_PAYOUT_METHODS)",
+                  "const manual = ['manual', 'bank_transfer_manual', 'crypto_manual', 'inpay'];",
+                  "const others = on.filter(c => c.method !== 'bank_transfer_auto');",
+                  "const other = others.find(c => !manual.includes(c.method)) || others[0];   // prefer one the command pays on its own",
+                  "pm.test('a Bank Transfer (auto) payout configuration exists in {{currency}}', () => pm.expect(auto.length).to.be.above(0));",
+                  "if (!auto.length) { return; }",
+                  "set('cfgA', auto[0].id);",
+                  "set('cfgB', auto[1] ? auto[1].id : '');          // same method, other configuration: cell is skipped when absent",
+                  "set('cfgOther', other ? other.id : '');          // other payout method: cell is skipped when absent",
+                  "set('eAuto', other && !manual.includes(other.method) ? 'yes' : 'no');   // yes: E is paid on its own; no: E must stay validated",
+                  "const used = [auto[0], auto[1], other].filter(Boolean);",
+                  "const minLimit = Math.max(10, ...used.map(c => Math.ceil(Number(c.minLimit || 0))));",
+                  "const maxLimit = Math.min(...used.map(c => c.maxLimit == null ? Infinity : Number(c.maxLimit)));",
+                  "// distinct amounts per run, so the player history can tell the requests apart from older ones",
+                  "const cents = (Date.now() % 89) + 10;",
+                  "const amt = k => (minLimit + k + cents / 100).toFixed(2);",
+                  "['D', 'A', 'B', 'C', 'E', 'G', 'F'].forEach((n, i) => set('amt' + n, amt(i)));",
+                  "pm.test('amounts fit every configuration limit', () => pm.expect(Number(amt(6))).to.be.at.most(maxLimit));",
+                  "set('needed', (7 * minLimit + 30).toFixed(2));",
+                  "console.log('cfgA=' + auto[0].id + ' cfgB=' + (auto[1] ? auto[1].id : '-') + ' cfgOther=' + (other ? other.id + ':' + other.method : '-'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GW balance: how much to top up",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/wallet/balances"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 400) console.log(pm.request.method + ' ' + pm.request.url.getPath() + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const set = (k, v) => { const x = v === undefined || v === null ? '' : String(v); pm.collectionVariables.set(k, x);",
+                  "  try { pm.environment.set(k, x); } catch (e) { /* no environment selected: the collection variable carries it */ } };",
+                  "const get = k => pm.variables.get(k);",
+                  "",
+                  "const b = (pm.response.json().balances || []).find(x => x.currency === get('currency'));",
+                  "const w = Number(b ? b.withdrawable : 0);",
+                  "const need = Number(get('needed'));",
+                  "set('topUp', w < need ? Math.ceil(need - w) : '');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "BO token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 400) console.log(pm.request.method + ' ' + pm.request.url.getPath() + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const set = (k, v) => { const x = v === undefined || v === null ? '' : String(v); pm.collectionVariables.set(k, x);",
+                  "  try { pm.environment.set(k, x); } catch (e) { /* no environment selected: the collection variable carries it */ } };",
+                  "set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "BO adjustment_up when the withdrawable balance is short",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/wallet/transaction",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"adjustment_up\",\n  \"amount\": \"{{topUp}}\",\n  \"currency\": \"{{currency}}\",\n  \"note\": \"QA CLS-1214 balance\",\n  \"reason\": \"payment_provider_issue\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get('topUp')) { pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 400) console.log(pm.request.method + ' ' + pm.request.url.getPath() + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1 GW player requests withdrawals",
+      "item": [
+        {
+          "name": "Player token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"player\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"client_id\": \"{{oauth_client_id}}\",\n  \"client_secret\": \"{{oauth_client_secret}}\",\n  \"deviceInformation\": {\n    \"ip\": \"127.0.0.1\",\n    \"userAgent\": \"Mozilla/5.0\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 400) console.log(pm.request.method + ' ' + pm.request.url.getPath() + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const set = (k, v) => { const x = v === undefined || v === null ? '' : String(v); pm.collectionVariables.set(k, x);",
+                  "  try { pm.environment.set(k, x); } catch (e) { /* no environment selected: the collection variable carries it */ } };",
+                  "set('access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GW withdraw D: stays pending, never validated (stand-in for on hold)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/wallet/withdrawal",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentInformation\": { \"paymentConfigurationId\": {{cfgA}} },\n  \"amount\": {{amtD}},\n  \"ip\": \"127.0.0.1\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 400) console.log(pm.request.method + ' ' + pm.request.url.getPath() + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const set = (k, v) => { const x = v === undefined || v === null ? '' : String(v); pm.collectionVariables.set(k, x);",
+                  "  try { pm.environment.set(k, x); } catch (e) { /* no environment selected: the collection variable carries it */ } };",
+                  "const j = pm.response.json();",
+                  "pm.test('request created', () => pm.expect(j.id).to.not.be.undefined);",
+                  "set('wdrD', j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GW withdraw A: bank_transfer_auto",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/wallet/withdrawal",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentInformation\": { \"paymentConfigurationId\": {{cfgA}} },\n  \"amount\": {{amtA}},\n  \"ip\": \"127.0.0.1\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 400) console.log(pm.request.method + ' ' + pm.request.url.getPath() + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const set = (k, v) => { const x = v === undefined || v === null ? '' : String(v); pm.collectionVariables.set(k, x);",
+                  "  try { pm.environment.set(k, x); } catch (e) { /* no environment selected: the collection variable carries it */ } };",
+                  "const j = pm.response.json();",
+                  "pm.test('request created', () => pm.expect(j.id).to.not.be.undefined);",
+                  "set('wdrA', j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GW withdraw B: bank_transfer_auto",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/wallet/withdrawal",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentInformation\": { \"paymentConfigurationId\": {{cfgA}} },\n  \"amount\": {{amtB}},\n  \"ip\": \"127.0.0.1\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 400) console.log(pm.request.method + ' ' + pm.request.url.getPath() + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const set = (k, v) => { const x = v === undefined || v === null ? '' : String(v); pm.collectionVariables.set(k, x);",
+                  "  try { pm.environment.set(k, x); } catch (e) { /* no environment selected: the collection variable carries it */ } };",
+                  "const j = pm.response.json();",
+                  "pm.test('request created', () => pm.expect(j.id).to.not.be.undefined);",
+                  "set('wdrB', j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GW withdraw C: bank_transfer_auto",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/wallet/withdrawal",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentInformation\": { \"paymentConfigurationId\": {{cfgA}} },\n  \"amount\": {{amtC}},\n  \"ip\": \"127.0.0.1\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 400) console.log(pm.request.method + ' ' + pm.request.url.getPath() + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const set = (k, v) => { const x = v === undefined || v === null ? '' : String(v); pm.collectionVariables.set(k, x);",
+                  "  try { pm.environment.set(k, x); } catch (e) { /* no environment selected: the collection variable carries it */ } };",
+                  "const j = pm.response.json();",
+                  "pm.test('request created', () => pm.expect(j.id).to.not.be.undefined);",
+                  "set('wdrC', j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GW withdraw E: other payout method",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/wallet/withdrawal",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentInformation\": { \"paymentConfigurationId\": {{cfgOther}} },\n  \"amount\": {{amtE}},\n  \"ip\": \"127.0.0.1\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get('cfgOther')) { pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 400) console.log(pm.request.method + ' ' + pm.request.url.getPath() + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const set = (k, v) => { const x = v === undefined || v === null ? '' : String(v); pm.collectionVariables.set(k, x);",
+                  "  try { pm.environment.set(k, x); } catch (e) { /* no environment selected: the collection variable carries it */ } };",
+                  "const j = pm.response.json();",
+                  "pm.test('request created', () => pm.expect(j.id).to.not.be.undefined);",
+                  "set('wdrE', j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GW withdraw G: bank_transfer_auto, other configuration",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/wallet/withdrawal",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentInformation\": { \"paymentConfigurationId\": {{cfgB}} },\n  \"amount\": {{amtG}},\n  \"ip\": \"127.0.0.1\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get('cfgB')) { pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 400) console.log(pm.request.method + ' ' + pm.request.url.getPath() + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const set = (k, v) => { const x = v === undefined || v === null ? '' : String(v); pm.collectionVariables.set(k, x);",
+                  "  try { pm.environment.set(k, x); } catch (e) { /* no environment selected: the collection variable carries it */ } };",
+                  "const j = pm.response.json();",
+                  "pm.test('request created', () => pm.expect(j.id).to.not.be.undefined);",
+                  "set('wdrG', j.id);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 BO validates (the lowest id of A, B, C is the lead)",
+      "item": [
+        {
+          "name": "BO token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 400) console.log(pm.request.method + ' ' + pm.request.url.getPath() + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const set = (k, v) => { const x = v === undefined || v === null ? '' : String(v); pm.collectionVariables.set(k, x);",
+                  "  try { pm.environment.set(k, x); } catch (e) { /* no environment selected: the collection variable carries it */ } };",
+                  "set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "BO validate A",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/withdrawal_request/{{wdrA}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"validated\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 400) console.log(pm.request.method + ' ' + pm.request.url.getPath() + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('validated', () => pm.expect(j.status).to.eql('validated'));",
+                  "pm.test('payout group column not exposed', () => pm.expect(JSON.stringify(j)).to.not.match(/payout_?group/i));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "BO validate B",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/withdrawal_request/{{wdrB}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"validated\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 400) console.log(pm.request.method + ' ' + pm.request.url.getPath() + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('validated', () => pm.expect(j.status).to.eql('validated'));",
+                  "pm.test('payout group column not exposed', () => pm.expect(JSON.stringify(j)).to.not.match(/payout_?group/i));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "BO validate C",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/withdrawal_request/{{wdrC}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"validated\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 400) console.log(pm.request.method + ' ' + pm.request.url.getPath() + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('validated', () => pm.expect(j.status).to.eql('validated'));",
+                  "pm.test('payout group column not exposed', () => pm.expect(JSON.stringify(j)).to.not.match(/payout_?group/i));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "BO validate E",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/withdrawal_request/{{wdrE}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"validated\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get('cfgOther')) { pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 400) console.log(pm.request.method + ' ' + pm.request.url.getPath() + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('validated', () => pm.expect(j.status).to.eql('validated'));",
+                  "pm.test('payout group column not exposed', () => pm.expect(JSON.stringify(j)).to.not.match(/payout_?group/i));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "BO validate G",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/withdrawal_request/{{wdrG}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"validated\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get('cfgB')) { pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 400) console.log(pm.request.method + ' ' + pm.request.url.getPath() + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('validated', () => pm.expect(j.status).to.eql('validated'));",
+                  "pm.test('payout group column not exposed', () => pm.expect(JSON.stringify(j)).to.not.match(/payout_?group/i));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 BO verify: the group settles together, each request keeps its amount",
+      "item": [
+        {
+          "name": "BO token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 400) console.log(pm.request.method + ' ' + pm.request.url.getPath() + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const set = (k, v) => { const x = v === undefined || v === null ? '' : String(v); pm.collectionVariables.set(k, x);",
+                  "  try { pm.environment.set(k, x); } catch (e) { /* no environment selected: the collection variable carries it */ } };",
+                  "set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "BO list A..G: wait for the group to settle",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/withdrawal_requests",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const key = 'poll_' + pm.info.requestName.replace(/[^A-Za-z0-9]/g, '_').slice(0, 60);",
+                  "const attempt = Number(pm.variables.get(key) || 0);",
+                  "if (attempt > 0) { setTimeout(function () {}, Number(pm.variables.get('pollDelayMs') || 5000)); }",
+                  "pm.request.body.update(JSON.stringify({ filter: { ids: ['A','B','C','D','E','G'].map(n => pm.variables.get('wdr' + n)).filter(Boolean).map(Number) }, limit: 50 }));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const key = 'poll_' + pm.info.requestName.replace(/[^A-Za-z0-9]/g, '_').slice(0, 60);",
+                  "const attempt = Number(pm.variables.get(key) || 0);",
+                  "const max = Number(pm.variables.get('pollMax') || 150);",
+                  "const set = (k, v) => { const x = v === undefined || v === null ? '' : String(v); pm.collectionVariables.set(k, x);",
+                  "  try { pm.environment.set(k, x); } catch (e) { /* no environment selected: the collection variable carries it */ } };",
+                  "const get = k => pm.variables.get(k);",
+                  "let settled = false; let ctx = {};",
+                  "if (pm.response.code === 200) { try { ({ settled, ctx } = (function () {",
+                  "",
+                  "const rows = pm.response.json();",
+                  "const by = {}; rows.forEach(r => by[String(r.id)] = r);",
+                  "const id = n => String(pm.variables.get('wdr' + n));",
+                  "const term = s => s === 'paid' || s === 'error';",
+                  "const g = ['A','B','C'].map(n => by[id(n)]);",
+                  "const gOk = g.every(r => r && term(r.status));",
+                  "const gSingle = !pm.variables.get('wdrG') || (by[id('G')] && term(by[id('G')].status));",
+                  "const eOk = !pm.variables.get('wdrE') || pm.variables.get('eAuto') !== 'yes' || (by[id('E')] && term(by[id('E')].status));",
+                  "return { settled: gOk && gSingle && eOk, ctx: { by, id } };",
+                  "",
+                  "})()); } catch (e) { console.log('poll parse error: ' + e.message); } }",
+                  "if (!settled && attempt < max) {",
+                  "  set(key, attempt + 1);",
+                  "  postman.setNextRequest(pm.info.requestName);",
+                  "} else {",
+                  "  set(key, 0);",
+                  "  pm.test('settled before the poll limit (' + attempt + ' retries)', () => pm.expect(settled).to.eql(true));",
+                  "",
+                  "const { by, id } = ctx;",
+                  "if (!settled) { return; }",
+                  "const A = by[id('A')], B = by[id('B')], C = by[id('C')], D = by[id('D')];",
+                  "const sts = [A, B, C].map(r => r.status);",
+                  "pm.test('A, B and C ended in the same status (the whole group)', () => pm.expect(new Set(sts).size).to.eql(1));",
+                  "pm.test('the group is paid or error', () => pm.expect(['paid', 'error']).to.include(sts[0]));",
+                  "// criteria 4 and 5 are conditional (success -> all paid, failure -> all error): they are only pinned when the run says",
+                  "// which branch it is on. Without expectedGroupStatus the run proves the group moves together, nothing more.",
+                  "const want = pm.variables.get('expectedGroupStatus');",
+                  "if (want === 'paid') { pm.test('criterion 4: the combined payout succeeded, every request is paid', () => pm.expect(sts).to.eql(['paid', 'paid', 'paid'])); }",
+                  "else if (want === 'error') { pm.test('criterion 5: the combined payout failed, every request is in error', () => pm.expect(sts).to.eql(['error', 'error', 'error'])); }",
+                  "else { console.log('expectedGroupStatus not set: criteria 4 and 5 checked for consistency only (group ended ' + sts[0] + ')'); }",
+                  "// each request keeps its own amount",
+                  "['A', 'B', 'C'].forEach(n => pm.test(n + ' keeps its own amount', () => pm.expect(Number(by[id(n)].amount)).to.eql(Number(pm.variables.get('amt' + n)))));",
+                  "pm.test('D (never validated) is still pending, not in the group', () => pm.expect(D.status).to.eql('pending'));",
+                  "if (pm.variables.get('wdrE')) {",
+                  "  if (pm.variables.get('eAuto') === 'yes') { pm.test('E (other method, paid automatically) was paid on its own, not with the group', () => pm.expect(['paid', 'error']).to.include(by[id('E')].status)); }",
+                  "  else { pm.test('E (manual method) is never picked up by the command: still validated', () => pm.expect(by[id('E')].status).to.eql('validated')); }",
+                  "}",
+                  "set('grpStatus', sts[0]);",
+                  "const sum = (k) => ['A','B','C'].reduce((s, n) => s + Number(by[id(n)][k] || 0), 0);",
+                  "set('grpPayoutAmount', sum('payoutAmount').toFixed(2));",
+                  "const fees = ['A','B','C'].map(n => by[id(n)].fee);",
+                  "set('grpFee', fees.every(f => f === null || f === undefined) ? 'null' : sum('fee').toFixed(2));",
+                  "",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4 GW player history: still one line per request",
+      "item": [
+        {
+          "name": "Player token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"player\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"client_id\": \"{{oauth_client_id}}\",\n  \"client_secret\": \"{{oauth_client_secret}}\",\n  \"deviceInformation\": {\n    \"ip\": \"127.0.0.1\",\n    \"userAgent\": \"Mozilla/5.0\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 400) console.log(pm.request.method + ' ' + pm.request.url.getPath() + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const set = (k, v) => { const x = v === undefined || v === null ? '' : String(v); pm.collectionVariables.set(k, x);",
+                  "  try { pm.environment.set(k, x); } catch (e) { /* no environment selected: the collection variable carries it */ } };",
+                  "set('access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GW wallet transactions: one withdraw per request",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/wallet/transactions?type[]=withdraw&currency={{currency}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 400) console.log(pm.request.method + ' ' + pm.request.url.getPath() + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const get = k => pm.variables.get(k);",
+                  "",
+                  "const j = pm.response.json();",
+                  "const list = Array.isArray(j) ? j : (j.transactions || j.data || []);",
+                  "const amounts = list.map(t => Math.abs(Number(t.amount)).toFixed(2));",
+                  "['A', 'B', 'C'].forEach(n => pm.test('request ' + n + ' still has its own withdraw transaction', () => pm.expect(amounts).to.include(Number(get('amt' + n)).toFixed(2))));",
+                  "// the status the player sees, per request: the status of that request's own withdraw transaction",
+                  "const statusOf = n => (list.find(t => Math.abs(Number(t.amount)).toFixed(2) === Number(get('amt' + n)).toFixed(2)) || {}).status;",
+                  "const pst = ['A', 'B', 'C'].map(statusOf);",
+                  "['A', 'B', 'C'].forEach((n, i) => pm.test('request ' + n + ' shows its own status to the player (' + pst[i] + ')', () => pm.expect(pst[i]).to.be.a('string')));",
+                  "pm.test('the group settled together on the player side too', () => pm.expect(new Set(pst).size).to.eql(1));",
+                  "if (get('grpStatus') === 'paid') { pm.test('a paid group shows success on every withdraw transaction', () => pm.expect(pst).to.eql(['success', 'success', 'success'])); }",
+                  "const total = ['A', 'B', 'C'].reduce((s, n) => s + Number(get('amt' + n)), 0).toFixed(2);",
+                  "pm.test('no transaction for the summed amount: the player history is not merged', () => pm.expect(amounts).to.not.include(total));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5 BO report: one payout line exposing every combined id",
+      "item": [
+        {
+          "name": "BO token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 400) console.log(pm.request.method + ' ' + pm.request.url.getPath() + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const set = (k, v) => { const x = v === undefined || v === null ? '' : String(v); pm.collectionVariables.set(k, x);",
+                  "  try { pm.environment.set(k, x); } catch (e) { /* no environment selected: the collection variable carries it */ } };",
+                  "set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "BO transaction report: the payout line of the group",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/finance/transaction_reports",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filter\": { \"playerId\": \"{{playerId}}\" },\n  \"limit\": 100,\n  \"order\": { \"field\": \"id\", \"direction\": \"desc\" }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const key = 'poll_' + pm.info.requestName.replace(/[^A-Za-z0-9]/g, '_').slice(0, 60);",
+                  "const attempt = Number(pm.variables.get(key) || 0);",
+                  "if (attempt > 0) { setTimeout(function () {}, Number(pm.variables.get('pollDelayMs') || 5000)); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const key = 'poll_' + pm.info.requestName.replace(/[^A-Za-z0-9]/g, '_').slice(0, 60);",
+                  "const attempt = Number(pm.variables.get(key) || 0);",
+                  "const max = Number(pm.variables.get('pollMax') || 150);",
+                  "const set = (k, v) => { const x = v === undefined || v === null ? '' : String(v); pm.collectionVariables.set(k, x);",
+                  "  try { pm.environment.set(k, x); } catch (e) { /* no environment selected: the collection variable carries it */ } };",
+                  "const get = k => pm.variables.get(k);",
+                  "let settled = false; let ctx = {};",
+                  "if (pm.response.code === 200) { try { ({ settled, ctx } = (function () {",
+                  "",
+                  "const lines = pm.response.json();",
+                  "const L = Array.isArray(lines) ? lines : (lines.data || []);",
+                  "const ids = ['A','B','C'].map(n => Number(pm.variables.get('wdr' + n))).sort((a, b) => a - b);",
+                  "const lead = ids[0];",
+                  "const line = L.find(l => Number(l.withdrawRequestId) === lead && l.type === 'withdraw');",
+                  "const gId = pm.variables.get('wdrG');",
+                  "const gLine = gId ? L.find(l => Number(l.withdrawRequestId) === Number(gId) && l.type === 'withdraw') : true;",
+                  "const eId = pm.variables.get('wdrE');",
+                  "const eLine = eId && pm.variables.get('eAuto') === 'yes' ? L.find(l => Number(l.withdrawRequestId) === Number(eId) && l.type === 'withdraw') : true;",
+                  "return { settled: !!line && !!gLine && !!eLine, ctx: { L, ids, lead, line, gLine, eLine } };",
+                  "",
+                  "})()); } catch (e) { console.log('poll parse error: ' + e.message); } }",
+                  "if (!settled && attempt < max) {",
+                  "  set(key, attempt + 1);",
+                  "  postman.setNextRequest(pm.info.requestName);",
+                  "} else {",
+                  "  set(key, 0);",
+                  "  pm.test('settled before the poll limit (' + attempt + ' retries)', () => pm.expect(settled).to.eql(true));",
+                  "",
+                  "const { L, ids, lead, line, gLine, eLine } = ctx;",
+                  "if (!settled) { return; }",
+                  "const mentions = n => L.filter(l => (l.withdrawRequestIds || []).map(Number).includes(Number(n)));",
+                  "pm.test('the payout line carries every combined id, ascending', () => pm.expect(line.withdrawRequestIds.map(Number)).to.eql(ids));",
+                  "pm.test('withdrawRequestId is the lead (lowest id), unchanged', () => pm.expect(Number(line.withdrawRequestId)).to.eql(lead));",
+                  "ids.forEach(n => pm.test('request ' + n + ' appears in exactly one report line', () => pm.expect(mentions(n).length).to.eql(1)));",
+                  "['B', 'C'].forEach(n => pm.test(n + ' has no payout line of its own', () => pm.expect(L.filter(l => Number(l.withdrawRequestId) === Number(get('wdr' + n))).length).to.eql(0)));",
+                  "['D', 'E'].forEach(n => { if (get('wdr' + n)) pm.test(n + ' is not in the combined line', () => pm.expect(line.withdrawRequestIds.map(Number)).to.not.include(Number(get('wdr' + n)))); });",
+                  "pm.test('one payout for the total amount', () => pm.expect(Number(line.amount)).to.be.closeTo(Number(get('grpPayoutAmount')), 0.01));",
+                  "const feeWant = get('grpFee');",
+                  "pm.test('fee is the sum of the members fees, null when none has one', () => {",
+                  "  if (feeWant === 'null') { pm.expect(line.fee === null || line.fee === undefined).to.eql(true); }",
+                  "  else { pm.expect(Number(line.fee)).to.be.closeTo(Number(feeWant), 0.01); }",
+                  "});",
+                  "const wantLine = get('grpStatus') === 'paid' ? 'success' : 'failure';",
+                  "pm.test('line status follows the group (' + get('grpStatus') + ' -> ' + wantLine + ')', () => pm.expect(line.status).to.eql(wantLine));",
+                  "if (get('wdrE') && get('eAuto') === 'yes') {",
+                  "  pm.test('E (other payout method) is paid in its own payout, never combined', () => pm.expect(eLine.withdrawRequestIds.map(Number)).to.eql([Number(get('wdrE'))]));",
+                  "}",
+                  "if (get('wdrG')) {",
+                  "  pm.test('G (other configuration) is paid in its own payout', () => pm.expect(gLine.withdrawRequestIds.map(Number)).to.eql([Number(get('wdrG'))]));",
+                  "}",
+                  "",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6 Group of one: request and validate F (alone, after the first run)",
+      "item": [
+        {
+          "name": "Player token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"player\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"client_id\": \"{{oauth_client_id}}\",\n  \"client_secret\": \"{{oauth_client_secret}}\",\n  \"deviceInformation\": {\n    \"ip\": \"127.0.0.1\",\n    \"userAgent\": \"Mozilla/5.0\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 400) console.log(pm.request.method + ' ' + pm.request.url.getPath() + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const set = (k, v) => { const x = v === undefined || v === null ? '' : String(v); pm.collectionVariables.set(k, x);",
+                  "  try { pm.environment.set(k, x); } catch (e) { /* no environment selected: the collection variable carries it */ } };",
+                  "set('access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GW withdraw F: bank_transfer_auto, alone",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/wallet/withdrawal",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentInformation\": { \"paymentConfigurationId\": {{cfgA}} },\n  \"amount\": {{amtF}},\n  \"ip\": \"127.0.0.1\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 400) console.log(pm.request.method + ' ' + pm.request.url.getPath() + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const set = (k, v) => { const x = v === undefined || v === null ? '' : String(v); pm.collectionVariables.set(k, x);",
+                  "  try { pm.environment.set(k, x); } catch (e) { /* no environment selected: the collection variable carries it */ } };",
+                  "const j = pm.response.json();",
+                  "pm.test('request created', () => pm.expect(j.id).to.not.be.undefined);",
+                  "set('wdrF', j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "BO token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 400) console.log(pm.request.method + ' ' + pm.request.url.getPath() + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const set = (k, v) => { const x = v === undefined || v === null ? '' : String(v); pm.collectionVariables.set(k, x);",
+                  "  try { pm.environment.set(k, x); } catch (e) { /* no environment selected: the collection variable carries it */ } };",
+                  "set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "BO validate F",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/withdrawal_request/{{wdrF}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"validated\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 400) console.log(pm.request.method + ' ' + pm.request.url.getPath() + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('validated', () => pm.expect(j.status).to.eql('validated'));",
+                  "pm.test('payout group column not exposed', () => pm.expect(JSON.stringify(j)).to.not.match(/payout_?group/i));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7 Group of one: settles and reports as today",
+      "item": [
+        {
+          "name": "BO token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 400) console.log(pm.request.method + ' ' + pm.request.url.getPath() + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const set = (k, v) => { const x = v === undefined || v === null ? '' : String(v); pm.collectionVariables.set(k, x);",
+                  "  try { pm.environment.set(k, x); } catch (e) { /* no environment selected: the collection variable carries it */ } };",
+                  "set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "BO list F: wait for the single request to settle",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/withdrawal_requests",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const key = 'poll_' + pm.info.requestName.replace(/[^A-Za-z0-9]/g, '_').slice(0, 60);",
+                  "const attempt = Number(pm.variables.get(key) || 0);",
+                  "if (attempt > 0) { setTimeout(function () {}, Number(pm.variables.get('pollDelayMs') || 5000)); }",
+                  "pm.request.body.update(JSON.stringify({ filter: { ids: [Number(pm.variables.get('wdrF'))] }, limit: 5 }));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const key = 'poll_' + pm.info.requestName.replace(/[^A-Za-z0-9]/g, '_').slice(0, 60);",
+                  "const attempt = Number(pm.variables.get(key) || 0);",
+                  "const max = Number(pm.variables.get('pollMax') || 150);",
+                  "const set = (k, v) => { const x = v === undefined || v === null ? '' : String(v); pm.collectionVariables.set(k, x);",
+                  "  try { pm.environment.set(k, x); } catch (e) { /* no environment selected: the collection variable carries it */ } };",
+                  "const get = k => pm.variables.get(k);",
+                  "let settled = false; let ctx = {};",
+                  "if (pm.response.code === 200) { try { ({ settled, ctx } = (function () {",
+                  "",
+                  "const rows = pm.response.json();",
+                  "const r = rows.find(x => String(x.id) === String(pm.variables.get('wdrF')));",
+                  "const term = s => s === 'paid' || s === 'error';",
+                  "return { settled: !!r && term(r.status), ctx: { r } };",
+                  "",
+                  "})()); } catch (e) { console.log('poll parse error: ' + e.message); } }",
+                  "if (!settled && attempt < max) {",
+                  "  set(key, attempt + 1);",
+                  "  postman.setNextRequest(pm.info.requestName);",
+                  "} else {",
+                  "  set(key, 0);",
+                  "  pm.test('settled before the poll limit (' + attempt + ' retries)', () => pm.expect(settled).to.eql(true));",
+                  "",
+                  "const { r } = ctx;",
+                  "if (!settled) { return; }",
+                  "pm.test('F keeps its own amount', () => pm.expect(Number(r.amount)).to.eql(Number(get('amtF'))));",
+                  "set('fPayoutAmount', r.payoutAmount);",
+                  "set('fFee', r.fee === null || r.fee === undefined ? 'null' : r.fee);",
+                  "set('fStatus', r.status);",
+                  "",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "BO transaction report: the payout line of F",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/finance/transaction_reports",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filter\": { \"playerId\": \"{{playerId}}\" },\n  \"limit\": 100,\n  \"order\": { \"field\": \"id\", \"direction\": \"desc\" }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const key = 'poll_' + pm.info.requestName.replace(/[^A-Za-z0-9]/g, '_').slice(0, 60);",
+                  "const attempt = Number(pm.variables.get(key) || 0);",
+                  "if (attempt > 0) { setTimeout(function () {}, Number(pm.variables.get('pollDelayMs') || 5000)); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const key = 'poll_' + pm.info.requestName.replace(/[^A-Za-z0-9]/g, '_').slice(0, 60);",
+                  "const attempt = Number(pm.variables.get(key) || 0);",
+                  "const max = Number(pm.variables.get('pollMax') || 150);",
+                  "const set = (k, v) => { const x = v === undefined || v === null ? '' : String(v); pm.collectionVariables.set(k, x);",
+                  "  try { pm.environment.set(k, x); } catch (e) { /* no environment selected: the collection variable carries it */ } };",
+                  "const get = k => pm.variables.get(k);",
+                  "let settled = false; let ctx = {};",
+                  "if (pm.response.code === 200) { try { ({ settled, ctx } = (function () {",
+                  "",
+                  "const lines = pm.response.json();",
+                  "const L = Array.isArray(lines) ? lines : (lines.data || []);",
+                  "const f = Number(pm.variables.get('wdrF'));",
+                  "const line = L.find(l => Number(l.withdrawRequestId) === f && l.type === 'withdraw');",
+                  "return { settled: !!line, ctx: { L, f, line } };",
+                  "",
+                  "})()); } catch (e) { console.log('poll parse error: ' + e.message); } }",
+                  "if (!settled && attempt < max) {",
+                  "  set(key, attempt + 1);",
+                  "  postman.setNextRequest(pm.info.requestName);",
+                  "} else {",
+                  "  set(key, 0);",
+                  "  pm.test('settled before the poll limit (' + attempt + ' retries)', () => pm.expect(settled).to.eql(true));",
+                  "",
+                  "const { L, f, line } = ctx;",
+                  "if (!settled) { return; }",
+                  "pm.test('single payout lists only its own id', () => pm.expect(line.withdrawRequestIds.map(Number)).to.eql([f]));",
+                  "pm.test('amount is the request payout amount', () => pm.expect(Number(line.amount)).to.be.closeTo(Number(get('fPayoutAmount')), 0.01));",
+                  "pm.test('fee is the request fee (null when none)', () => {",
+                  "  if (get('fFee') === 'null') { pm.expect(line.fee === null || line.fee === undefined).to.eql(true); }",
+                  "  else { pm.expect(Number(line.fee)).to.be.closeTo(Number(get('fFee')), 0.01); }",
+                  "});",
+                  "pm.test('F is not part of the first payout', () => pm.expect(L.filter(l => (l.withdrawRequestIds || []).map(Number).includes(f)).length).to.eql(1));",
+                  "",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "BO_baseUrl",
+      "value": "http://localhost:84"
+    },
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:93"
+    },
+    {
+      "key": "domainId",
+      "value": "1"
+    },
+    {
+      "key": "playerId",
+      "value": "1"
+    },
+    {
+      "key": "currency",
+      "value": "EUR"
+    },
+    {
+      "key": "pollMax",
+      "value": "150"
+    },
+    {
+      "key": "pollDelayMs",
+      "value": "5000"
+    },
+    {
+      "key": "expectedGroupStatus",
+      "value": ""
+    },
+    {
+      "key": "BO_oauth_client_id",
+      "value": ""
+    },
+    {
+      "key": "BO_oauth_client_secret",
+      "value": ""
+    },
+    {
+      "key": "BO_username",
+      "value": ""
+    },
+    {
+      "key": "BO_password",
+      "value": ""
+    },
+    {
+      "key": "oauth_client_id",
+      "value": ""
+    },
+    {
+      "key": "oauth_client_secret",
+      "value": ""
+    },
+    {
+      "key": "username",
+      "value": ""
+    },
+    {
+      "key": "password",
+      "value": ""
+    },
+    {
+      "key": "BO_access_token",
+      "value": ""
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "cfgA",
+      "value": ""
+    },
+    {
+      "key": "cfgB",
+      "value": ""
+    },
+    {
+      "key": "cfgOther",
+      "value": ""
+    },
+    {
+      "key": "amtA",
+      "value": ""
+    },
+    {
+      "key": "amtB",
+      "value": ""
+    },
+    {
+      "key": "amtC",
+      "value": ""
+    },
+    {
+      "key": "amtD",
+      "value": ""
+    },
+    {
+      "key": "amtE",
+      "value": ""
+    },
+    {
+      "key": "amtF",
+      "value": ""
+    },
+    {
+      "key": "amtG",
+      "value": ""
+    },
+    {
+      "key": "eAuto",
+      "value": ""
+    },
+    {
+      "key": "needed",
+      "value": ""
+    },
+    {
+      "key": "topUp",
+      "value": ""
+    },
+    {
+      "key": "wdrA",
+      "value": ""
+    },
+    {
+      "key": "wdrB",
+      "value": ""
+    },
+    {
+      "key": "wdrC",
+      "value": ""
+    },
+    {
+      "key": "wdrD",
+      "value": ""
+    },
+    {
+      "key": "wdrE",
+      "value": ""
+    },
+    {
+      "key": "wdrF",
+      "value": ""
+    },
+    {
+      "key": "wdrG",
+      "value": ""
+    },
+    {
+      "key": "grpStatus",
+      "value": ""
+    },
+    {
+      "key": "grpPayoutAmount",
+      "value": ""
+    },
+    {
+      "key": "grpFee",
+      "value": ""
+    },
+    {
+      "key": "fPayoutAmount",
+      "value": ""
+    },
+    {
+      "key": "fFee",
+      "value": ""
+    },
+    {
+      "key": "fStatus",
+      "value": ""
+    }
+  ]
+}

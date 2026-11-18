@@ -1,0 +1,1504 @@
+{
+  "info": {
+    "name": "CLS-3540 cms coverage refactor",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0 tokens, domain languages, player segment",
+      "item": [
+        {
+          "name": "GW player token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"player\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"client_id\": \"{{oauth_client_id}}\",\n  \"client_secret\": \"{{oauth_client_secret}}\",\n  \"deviceInformation\": {\n    \"ip\": \"127.0.0.1\",\n    \"userAgent\": \"Mozilla/5.0\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('access_token', pm.response.json().access_token);",
+                  "",
+                  "const p = JSON.parse(atob(pm.response.json().access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));",
+                  "pm.test('player id in token', () => pm.expect(p.sub).to.be.ok);",
+                  "pm.collectionVariables.set('playerId', String(p.sub));"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('runTag')) pm.collectionVariables.set('runTag', 'cls3540-' + Date.now());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "BO token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('runTag')) pm.collectionVariables.set('runTag', 'cls3540-' + Date.now());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET domain (languages)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const d = pm.response.json();",
+                  "const sec = d.secondaryLanguage ? (Array.isArray(d.secondaryLanguage) ? d.secondaryLanguage : [d.secondaryLanguage]) : [];",
+                  "const langs = [...new Set([d.language || 'en', ...sec].filter(Boolean))];",
+                  "pm.test('languages read', () => pm.expect(langs.length).to.be.above(0));",
+                  "console.log('domain languages: ' + langs.join(','));",
+                  "pm.collectionVariables.set('langs', JSON.stringify(langs));",
+                  "pm.collectionVariables.set('lang1', langs[0]);",
+                  "pm.collectionVariables.set('lang2', langs[1] || '');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST player segments",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/player/segments",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"filter\": {\"playerIds\": [{{playerId}}]}, \"limit\": 10, \"offset\": 0}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const j = pm.response.json(); const rows = [j, j.data, j.items].find(Array.isArray) || [];",
+                  "const row = rows.find(r => String(r.playerId) === pm.collectionVariables.get('playerId'));",
+                  "const ids = row ? row.segmentIds : [];",
+                  "console.log('player segments: ' + JSON.stringify(ids));",
+                  "pm.collectionVariables.set('segIn', ids.length ? String(ids[0]) : '');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1 BO setup: tags and blocks (cells 5, 6)",
+      "item": [
+        {
+          "name": "BO token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('runTag')) pm.collectionVariables.set('runTag', 'cls3540-' + Date.now());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST content_tag T",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_tag",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} T\",\n  \"backgroundColor\": \"#ff0000\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('tagT', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST content_tag T2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_tag",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} T2\",\n  \"backgroundColor\": \"#00ff00\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('tagT2', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST any block",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} any\",\n  \"slug\": \"{{runTag}}-any\",\n  \"visibility\": \"IS_AUTHENTICATED_ANONYMOUSLY\",\n  \"content\": {{cbContent}},\n  \"countries\": [],\n  \"segments\": [],\n  \"contentTagIds\": [{{tagT}}]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('cb_any', pm.response.json().id);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const langs = JSON.parse(pm.collectionVariables.get('langs') || '[\"en\"]');",
+                  "const c = {}; langs.forEach(l => c[l] = 'v1 ' + pm.collectionVariables.get('runTag') + ' ' + pm.info.requestName.split(' ')[1] + ' ' + l);",
+                  "pm.collectionVariables.set('cbContent', JSON.stringify(c));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH any enabled",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block/{{cb_any}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"enabled\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('enabled', () => pm.expect(pm.response.json().status).to.eql('enabled'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST user block",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} user\",\n  \"slug\": \"{{runTag}}-user\",\n  \"visibility\": \"ROLE_USER\",\n  \"content\": {{cbContent}},\n  \"countries\": [],\n  \"segments\": [],\n  \"contentTagIds\": [{{tagT}}, {{tagT2}}]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('cb_user', pm.response.json().id);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const langs = JSON.parse(pm.collectionVariables.get('langs') || '[\"en\"]');",
+                  "const c = {}; langs.forEach(l => c[l] = 'v1 ' + pm.collectionVariables.get('runTag') + ' ' + pm.info.requestName.split(' ')[1] + ' ' + l);",
+                  "pm.collectionVariables.set('cbContent', JSON.stringify(c));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST segin block",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} segin\",\n  \"slug\": \"{{runTag}}-segin\",\n  \"visibility\": \"ROLE_USER\",\n  \"content\": {{cbContent}},\n  \"countries\": [],\n  \"segments\": [{{segIn}}],\n  \"contentTagIds\": [{{tagT}}]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('cb_segin', pm.response.json().id);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const langs = JSON.parse(pm.collectionVariables.get('langs') || '[\"en\"]');",
+                  "const c = {}; langs.forEach(l => c[l] = 'v1 ' + pm.collectionVariables.get('runTag') + ' ' + pm.info.requestName.split(' ')[1] + ' ' + l);",
+                  "pm.collectionVariables.set('cbContent', JSON.stringify(c));",
+                  "if (!pm.collectionVariables.get('segIn')) { console.log('player has no segment: segin cell not run'); pm.execution.skipRequest(); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH segin enabled",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block/{{cb_segin}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"enabled\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('enabled', () => pm.expect(pm.response.json().status).to.eql('enabled'));"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('segIn')) { console.log('player has no segment: segin cell not run'); pm.execution.skipRequest(); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST segout block",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} segout\",\n  \"slug\": \"{{runTag}}-segout\",\n  \"visibility\": \"ROLE_USER\",\n  \"content\": {{cbContent}},\n  \"countries\": [],\n  \"segments\": [999999999],\n  \"contentTagIds\": [{{tagT}}]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('cb_segout', pm.response.json().id);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const langs = JSON.parse(pm.collectionVariables.get('langs') || '[\"en\"]');",
+                  "const c = {}; langs.forEach(l => c[l] = 'v1 ' + pm.collectionVariables.get('runTag') + ' ' + pm.info.requestName.split(' ')[1] + ' ' + l);",
+                  "pm.collectionVariables.set('cbContent', JSON.stringify(c));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH segout enabled",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block/{{cb_segout}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"enabled\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('enabled', () => pm.expect(pm.response.json().status).to.eql('enabled'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST country block",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} country\",\n  \"slug\": \"{{runTag}}-country\",\n  \"visibility\": \"ROLE_VISIBLE_BY_COUNTRY\",\n  \"content\": {{cbContent}},\n  \"countries\": [],\n  \"contentTagIds\": [{{tagT}}]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('cb_country', pm.response.json().id);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const langs = JSON.parse(pm.collectionVariables.get('langs') || '[\"en\"]');",
+                  "const c = {}; langs.forEach(l => c[l] = 'v1 ' + pm.collectionVariables.get('runTag') + ' ' + pm.info.requestName.split(' ')[1] + ' ' + l);",
+                  "pm.collectionVariables.set('cbContent', JSON.stringify(c));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH country enabled",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block/{{cb_country}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"enabled\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('enabled', () => pm.expect(pm.response.json().status).to.eql('enabled'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST other block",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} other\",\n  \"slug\": \"{{runTag}}-other\",\n  \"visibility\": \"ROLE_USER\",\n  \"content\": {{cbContent}},\n  \"countries\": [],\n  \"segments\": [],\n  \"contentTagIds\": [{{tagT2}}]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('cb_other', pm.response.json().id);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const langs = JSON.parse(pm.collectionVariables.get('langs') || '[\"en\"]');",
+                  "const c = {}; langs.forEach(l => c[l] = 'v1 ' + pm.collectionVariables.get('runTag') + ' ' + pm.info.requestName.split(' ')[1] + ' ' + l);",
+                  "pm.collectionVariables.set('cbContent', JSON.stringify(c));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH other enabled",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block/{{cb_other}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"enabled\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('enabled', () => pm.expect(pm.response.json().status).to.eql('enabled'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT user block: v2 content, tags [T], enabled",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block/{{cb_user}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runTag}} user\",\n  \"slug\": \"{{runTag}}-user\",\n  \"visibility\": \"ROLE_USER\",\n  \"content\": {{cbContent}},\n  \"countries\": [],\n  \"segments\": [],\n  \"contentTagIds\": [{{tagT}}],\n  \"status\": \"enabled\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const langs = JSON.parse(pm.collectionVariables.get('langs') || '[\"en\"]');",
+                  "const c = {}; langs.forEach(l => c[l] = 'v2 ' + pm.collectionVariables.get('runTag') + ' ' + pm.info.requestName.split(' ')[1] + ' ' + l);",
+                  "pm.collectionVariables.set('cbContent', JSON.stringify(c));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET user block: v2 in every language, only tag T",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block/{{cb_user}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const body = JSON.stringify(pm.response.json());",
+                  "JSON.parse(pm.collectionVariables.get('langs')).forEach(l => pm.test('content stored for ' + l, () =>",
+                  "  pm.expect(body).to.include('v2 ' + pm.collectionVariables.get('runTag') + ' user ' + l)));",
+                  "const tags = (pm.response.json().contentTags || []).map(t => String(t.id));",
+                  "pm.test('tags replaced by [T]', () => pm.expect(tags).to.eql([String(pm.collectionVariables.get('tagT'))]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 GW player reads (cells 1, 2, 3)",
+      "item": [
+        {
+          "name": "GW player token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"player\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"client_id\": \"{{oauth_client_id}}\",\n  \"client_secret\": \"{{oauth_client_secret}}\",\n  \"deviceInformation\": {\n    \"ip\": \"127.0.0.1\",\n    \"userAgent\": \"Mozilla/5.0\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('access_token', pm.response.json().access_token);",
+                  "",
+                  "const p = JSON.parse(atob(pm.response.json().access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));",
+                  "pm.test('player id in token', () => pm.expect(p.sub).to.be.ok);",
+                  "pm.collectionVariables.set('playerId', String(p.sub));"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('runTag')) pm.collectionVariables.set('runTag', 'cls3540-' + Date.now());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET by tag name, lang1",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/cms/content-blocks?language={{lang1}}&contentTagNames[]={{runTag}} T"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const rt = pm.collectionVariables.get('runTag'); const lang = pm.collectionVariables.get('lang1');",
+                  "const list = pm.response.json()['content-block'];",
+                  "pm.test('content-block list', () => pm.expect(list).to.be.an('array'));",
+                  "const by = {}; list.forEach(b => by[b.slug] = b);",
+                  "const visible = [\"any\", \"user\", \"segin\"].filter(s => s !== 'segin' || pm.collectionVariables.get('segIn'));",
+                  "visible.forEach(s => pm.test('sees ' + s, () => pm.expect(by[rt + '-' + s], JSON.stringify(Object.keys(by))).to.be.ok));",
+                  "[\"segout\", \"country\", \"other\"].forEach(s => pm.test('does not see ' + s, () => pm.expect(by[rt + '-' + s]).to.be.undefined));",
+                  "const ver = {\"any\": \"v1\", \"user\": \"v2\", \"segin\": \"v1\"};",
+                  "visible.forEach(s => pm.test(s + ' content in ' + lang, () => pm.expect(by[rt + '-' + s].content).to.eql(ver[s] + ' ' + rt + ' ' + s + ' ' + lang)));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET by tag id, lang1",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/cms/content-blocks?language={{lang1}}&contentTagIds[]={{tagT}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const rt = pm.collectionVariables.get('runTag'); const lang = pm.collectionVariables.get('lang1');",
+                  "const list = pm.response.json()['content-block'];",
+                  "pm.test('content-block list', () => pm.expect(list).to.be.an('array'));",
+                  "const by = {}; list.forEach(b => by[b.slug] = b);",
+                  "const visible = [\"any\", \"user\", \"segin\"].filter(s => s !== 'segin' || pm.collectionVariables.get('segIn'));",
+                  "visible.forEach(s => pm.test('sees ' + s, () => pm.expect(by[rt + '-' + s], JSON.stringify(Object.keys(by))).to.be.ok));",
+                  "[\"segout\", \"country\", \"other\"].forEach(s => pm.test('does not see ' + s, () => pm.expect(by[rt + '-' + s]).to.be.undefined));",
+                  "const ver = {\"any\": \"v1\", \"user\": \"v2\", \"segin\": \"v1\"};",
+                  "visible.forEach(s => pm.test(s + ' content in ' + lang, () => pm.expect(by[rt + '-' + s].content).to.eql(ver[s] + ' ' + rt + ' ' + s + ' ' + lang)));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET by tag name, lang2",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/cms/content-blocks?language={{lang2}}&contentTagNames[]={{runTag}} T"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const rt = pm.collectionVariables.get('runTag'); const lang = pm.collectionVariables.get('lang2');",
+                  "const list = pm.response.json()['content-block'];",
+                  "pm.test('content-block list', () => pm.expect(list).to.be.an('array'));",
+                  "const by = {}; list.forEach(b => by[b.slug] = b);",
+                  "const visible = [\"any\", \"user\", \"segin\"].filter(s => s !== 'segin' || pm.collectionVariables.get('segIn'));",
+                  "visible.forEach(s => pm.test('sees ' + s, () => pm.expect(by[rt + '-' + s], JSON.stringify(Object.keys(by))).to.be.ok));",
+                  "[\"segout\", \"country\", \"other\"].forEach(s => pm.test('does not see ' + s, () => pm.expect(by[rt + '-' + s]).to.be.undefined));",
+                  "const ver = {\"any\": \"v1\", \"user\": \"v2\", \"segin\": \"v1\"};",
+                  "visible.forEach(s => pm.test(s + ' content in ' + lang, () => pm.expect(by[rt + '-' + s].content).to.eql(ver[s] + ' ' + rt + ' ' + s + ' ' + lang)));"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('lang2')) { console.log('domain has one language: cell 3 not run'); pm.execution.skipRequest(); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET by tag name T2: only other",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/cms/content-blocks?language={{lang1}}&contentTagNames[]={{runTag}} T2"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const rt = pm.collectionVariables.get('runTag'); const lang = pm.collectionVariables.get('lang1');",
+                  "const list = pm.response.json()['content-block'];",
+                  "pm.test('content-block list', () => pm.expect(list).to.be.an('array'));",
+                  "const by = {}; list.forEach(b => by[b.slug] = b);",
+                  "const visible = [\"other\"].filter(s => s !== 'segin' || pm.collectionVariables.get('segIn'));",
+                  "visible.forEach(s => pm.test('sees ' + s, () => pm.expect(by[rt + '-' + s], JSON.stringify(Object.keys(by))).to.be.ok));",
+                  "[\"any\", \"user\", \"segin\", \"segout\", \"country\"].forEach(s => pm.test('does not see ' + s, () => pm.expect(by[rt + '-' + s]).to.be.undefined));",
+                  "const ver = {\"other\": \"v1\"};",
+                  "visible.forEach(s => pm.test(s + ' content in ' + lang, () => pm.expect(by[rt + '-' + s].content).to.eql(ver[s] + ' ' + rt + ' ' + s + ' ' + lang)));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 GW visitor with application token (cell 4)",
+      "item": [
+        {
+          "name": "GW application token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"client_credentials\",\n  \"client_id\": \"{{oauth_client_id}}\",\n  \"client_secret\": \"{{oauth_client_secret}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('app_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET by tag name as visitor",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{app_token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/cms/content-blocks?language={{lang1}}&contentTagNames[]={{runTag}} T"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const rt = pm.collectionVariables.get('runTag'); const lang = pm.collectionVariables.get('lang1');",
+                  "const list = pm.response.json()['content-block'];",
+                  "pm.test('content-block list', () => pm.expect(list).to.be.an('array'));",
+                  "const by = {}; list.forEach(b => by[b.slug] = b);",
+                  "const visible = [\"any\", \"country\"].filter(s => s !== 'segin' || pm.collectionVariables.get('segIn'));",
+                  "visible.forEach(s => pm.test('sees ' + s, () => pm.expect(by[rt + '-' + s], JSON.stringify(Object.keys(by))).to.be.ok));",
+                  "[\"user\", \"segin\", \"segout\", \"other\"].forEach(s => pm.test('does not see ' + s, () => pm.expect(by[rt + '-' + s]).to.be.undefined));",
+                  "const ver = {\"any\": \"v1\", \"country\": \"v1\"};",
+                  "visible.forEach(s => pm.test(s + ' content in ' + lang, () => pm.expect(by[rt + '-' + s].content).to.eql(ver[s] + ' ' + rt + ' ' + s + ' ' + lang)));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4 BO terms and conditions draft (cell 7, never publish)",
+      "item": [
+        {
+          "name": "POST draft",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/terms_and_conditions",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": {{tcContent}}\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('tcId', pm.response.json().id);",
+                  "const body = JSON.stringify(pm.response.json());",
+                  "JSON.parse(pm.collectionVariables.get('langs')).forEach(l => pm.test('T&C content for ' + l, () =>",
+                  "  pm.expect(body).to.include('QA draft do not publish v1 ' + pm.collectionVariables.get('runTag') + ' tc ' + l)));"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const langs = JSON.parse(pm.collectionVariables.get('langs') || '[\"en\"]');",
+                  "const c = {}; langs.forEach(l => c[l] = 'QA draft do not publish v1 ' + pm.collectionVariables.get('runTag') + ' tc ' + l);",
+                  "pm.collectionVariables.set('tcContent', JSON.stringify(c));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT draft",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/terms_and_conditions/{{tcId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": {{tcContent}}\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const body = JSON.stringify(pm.response.json());",
+                  "JSON.parse(pm.collectionVariables.get('langs')).forEach(l => pm.test('T&C content for ' + l, () =>",
+                  "  pm.expect(body).to.include('QA draft do not publish v2 ' + pm.collectionVariables.get('runTag') + ' tc ' + l)));"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const langs = JSON.parse(pm.collectionVariables.get('langs') || '[\"en\"]');",
+                  "const c = {}; langs.forEach(l => c[l] = 'QA draft do not publish v2 ' + pm.collectionVariables.get('runTag') + ' tc ' + l);",
+                  "pm.collectionVariables.set('tcContent', JSON.stringify(c));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET terms_and_conditions list",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/terms_and_conditions"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5 BO cleanup",
+      "item": [
+        {
+          "name": "DELETE any block",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block/{{cb_any}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE user block",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block/{{cb_user}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE segin block",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block/{{cb_segin}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('segIn')) { console.log('player has no segment: segin cell not run'); pm.execution.skipRequest(); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE segout block",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block/{{cb_segout}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE country block",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block/{{cb_country}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE other block",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_block/{{cb_other}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE content_tag T",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_tag/{{tagT}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE content_tag T2",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/content_tag/{{tagT2}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) console.log(pm.request.method + ' ' + pm.request.url + ' -> ' + pm.response.code + ' ' + pm.response.text().slice(0, 400));",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "BO_baseUrl",
+      "value": "http://localhost:84"
+    },
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:93"
+    },
+    {
+      "key": "domainId",
+      "value": "1"
+    },
+    {
+      "key": "runTag",
+      "value": ""
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "app_token",
+      "value": ""
+    },
+    {
+      "key": "BO_access_token",
+      "value": ""
+    },
+    {
+      "key": "playerId",
+      "value": ""
+    },
+    {
+      "key": "langs",
+      "value": ""
+    },
+    {
+      "key": "lang1",
+      "value": ""
+    },
+    {
+      "key": "lang2",
+      "value": ""
+    },
+    {
+      "key": "segIn",
+      "value": ""
+    },
+    {
+      "key": "tagT",
+      "value": ""
+    },
+    {
+      "key": "tagT2",
+      "value": ""
+    },
+    {
+      "key": "cbContent",
+      "value": ""
+    },
+    {
+      "key": "tcContent",
+      "value": ""
+    },
+    {
+      "key": "tcId",
+      "value": ""
+    },
+    {
+      "key": "cb_any",
+      "value": ""
+    },
+    {
+      "key": "cb_user",
+      "value": ""
+    },
+    {
+      "key": "cb_segin",
+      "value": ""
+    },
+    {
+      "key": "cb_segout",
+      "value": ""
+    },
+    {
+      "key": "cb_country",
+      "value": ""
+    },
+    {
+      "key": "cb_other",
+      "value": ""
+    }
+  ]
+}

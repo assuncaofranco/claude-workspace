@@ -1,0 +1,62 @@
+diff --git a/composer.json b/composer.json
+index daa0a26809..a922e5a600 100644
+--- a/composer.json
++++ b/composer.json
+@@ -45,7 +45,7 @@
+         "gaufrette/aws-s3-adapter": "^0.4.0",
+         "giggsey/libphonenumber-for-php": "^8.9",
+         "knplabs/knp-gaufrette-bundle": "0.9",
+-        "lancasters/constants": "dev-CLS-4767 as 1.369",
++        "lancasters/constants": "dev-CLS-4767 as 1.370",
+         "lancasters/curl-library": "^2.27",
+         "lancasters/guard-library-bundle": "~2.3.16",
+         "lancasters/homepage-bundle": "^1.0",
+diff --git a/composer.lock b/composer.lock
+index 6590cd53f1..ec673ae2c7 100644
+--- a/composer.lock
++++ b/composer.lock
+@@ -4,7 +4,7 @@
+         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+         "This file is @generated automatically"
+     ],
+-    "content-hash": "2a39b684fc0de762e0222f09c944bd77",
++    "content-hash": "9db241750201cc10933d0ed2c2011a31",
+     "packages": [
+         {
+             "name": "async-aws/core",
+@@ -3342,12 +3342,12 @@
+             "source": {
+                 "type": "git",
+                 "url": "git@github.com:celesta-tech/celesta-constants.git",
+-                "reference": "5c046477001f62f8e6b876c3093057c222d6fa4d"
++                "reference": "fd3438e70e20fed660fec7ba0ce311cb230e3307"
+             },
+             "dist": {
+                 "type": "zip",
+-                "url": "https://api.github.com/repos/celesta-tech/celesta-constants/zipball/5c046477001f62f8e6b876c3093057c222d6fa4d",
+-                "reference": "5c046477001f62f8e6b876c3093057c222d6fa4d",
++                "url": "https://api.github.com/repos/celesta-tech/celesta-constants/zipball/fd3438e70e20fed660fec7ba0ce311cb230e3307",
++                "reference": "fd3438e70e20fed660fec7ba0ce311cb230e3307",
+                 "shasum": "",
+                 "mirrors": [
+                     {
+@@ -3391,7 +3391,7 @@
+                 "source": "https://github.com/celesta-tech/celesta-constants/tree/CLS-4767",
+                 "issues": "https://github.com/celesta-tech/celesta-constants/issues"
+             },
+-            "time": "2026-11-17T14:37:30+00:00"
++            "time": "2026-11-18T10:04:18+00:00"
+         },
+         {
+             "name": "lancasters/curl-library",
+@@ -17201,8 +17201,8 @@
+         {
+             "package": "lancasters/constants",
+             "version": "dev-CLS-4767",
+-            "alias": "1.369",
+-            "alias_normalized": "1.369.0.0"
++            "alias": "1.370",
++            "alias_normalized": "1.370.0.0"
+         }
+     ],
+     "minimum-stability": "stable",

@@ -1,0 +1,403 @@
+{
+  "info": {
+    "name": "CLS-4337-CLS-4338 free-round win for a bonus held in another currency",
+    "description": "Wallet only (DEV-ONLY, guard signed). Run: ./run.sh",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "['ownerId', 'otherOwnerId', 'bonusA', 'bonusB', 'bonusC', 'bonusUnknown', 'ptx'].forEach(k => {",
+          "  if (!pm.collectionVariables.get(k)) pm.collectionVariables.set(k, String(900000000 + Math.floor(Math.random() * 99999999)));",
+          "});",
+          "const crypto = require('crypto-js');",
+          "const url = pm.variables.replaceIn(pm.request.url.toString());",
+          "const m = url.match(/^https?:\\/\\/([^\\/:]+)(?::(\\d+))?([^?]*)/);",
+          "const guardKey = String(pm.variables.get('guardKey') || '');",
+          "if (guardKey && m) {",
+          "  const method = pm.request.method.toUpperCase();",
+          "  let data = method + m[1] + decodeURIComponent(m[3]);",
+          "  if (['POST','PUT','PATCH'].includes(method)) {",
+          "    const body = (pm.request.body && pm.request.body.raw) ? pm.variables.replaceIn(pm.request.body.raw) : '';",
+          "    data += crypto.MD5(body).toString();",
+          "  }",
+          "  pm.request.headers.upsert({ key: 'x-guard-secret', value: crypto.HmacSHA256(data, guardKey).toString() });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "walletUrl",
+      "value": "http://localhost:88"
+    },
+    {
+      "key": "guardKey",
+      "value": ""
+    },
+    {
+      "key": "domainId",
+      "value": "1"
+    },
+    {
+      "key": "ownerId",
+      "value": ""
+    },
+    {
+      "key": "otherOwnerId",
+      "value": ""
+    },
+    {
+      "key": "bonusA",
+      "value": ""
+    },
+    {
+      "key": "bonusB",
+      "value": ""
+    },
+    {
+      "key": "bonusC",
+      "value": ""
+    },
+    {
+      "key": "bonusUnknown",
+      "value": ""
+    },
+    {
+      "key": "ptx",
+      "value": ""
+    },
+    {
+      "key": "eurWalletId",
+      "value": ""
+    },
+    {
+      "key": "txA",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "setup: player gets EUR and USD wallets, other player EUR",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{walletUrl}}/api/domain/{{domainId}}/initiate-wallets",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"wallets\": [{\"ownerId\": {{ownerId}}, \"realBalance\": 100, \"depositCount\": 1, \"currency\": \"EUR\", \"configuration\": {\"bonusOfferAllowed\": true, \"betAllowed\": true, \"initialPaidWithdrawalCount\": 0, \"initialPaidWithdrawalAmount\": \"0\", \"initialSuccessfulDepositAmount\": \"0\"}}, {\"ownerId\": {{ownerId}}, \"realBalance\": 100, \"depositCount\": 1, \"currency\": \"USD\", \"configuration\": {\"bonusOfferAllowed\": true, \"betAllowed\": true, \"initialPaidWithdrawalCount\": 0, \"initialPaidWithdrawalAmount\": \"0\", \"initialSuccessfulDepositAmount\": \"0\"}}, {\"ownerId\": {{otherOwnerId}}, \"realBalance\": 100, \"depositCount\": 1, \"currency\": \"EUR\", \"configuration\": {\"bonusOfferAllowed\": true, \"betAllowed\": true, \"initialPaidWithdrawalCount\": 0, \"initialPaidWithdrawalAmount\": \"0\", \"initialSuccessfulDepositAmount\": \"0\"}}]}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "00. claim free-round bonus A in EUR",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{walletUrl}}/api/domain/{{domainId}}/wallet/{{ownerId}}/bonus-transaction",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"action\": \"claimed\", \"bonusId\": {{bonusA}}, \"currency\": \"EUR\", \"model\": \"wager\", \"amount\": null, \"wageringMultiplier\": \"35.00\", \"rewardType\": \"free_rounds\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "01. claim free-round bonus B in USD (player now has EUR and USD wallets)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{walletUrl}}/api/domain/{{domainId}}/wallet/{{ownerId}}/bonus-transaction",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"action\": \"claimed\", \"bonusId\": {{bonusB}}, \"currency\": \"USD\", \"model\": \"wager\", \"amount\": null, \"wageringMultiplier\": \"35.00\", \"rewardType\": \"free_rounds\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. wallets before",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{walletUrl}}/api/domain/{{domainId}}/wallets/{{ownerId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const byCur = c => pm.response.json().find(w => w.currency === c);",
+              "pm.test('200', () => pm.response.to.have.status(200));",
+              "pm.test('EUR and USD wallets exist', () => { pm.expect(byCur('EUR')).to.be.ok; pm.expect(byCur('USD')).to.be.ok; });",
+              "pm.collectionVariables.set('eurWalletId', byCur('EUR').id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. credit bonus A win from the USD session (the bug)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{walletUrl}}/api/domain/{{domainId}}/wallet/{{ownerId}}/game-transaction/all",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"type\": \"bonus_deposit\", \"roundId\": null, \"subBalance\": {{bonusA}}, \"amount\": \"5.00\", \"currency\": \"USD\", \"providerTransactionId\": \"{{ptx}}-a\", \"gameSessionId\": \"cls4338\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200', () => pm.response.to.have.status(200));",
+              "const t = pm.response.json().transactions.find(x => x.type === 'bonus_deposit');",
+              "pm.test('booked in bonus A currency (EUR)', () => pm.expect(t.currency).to.eql('EUR'));",
+              "pm.test('booked in the EUR wallet', () => pm.expect(String(t.wallet.id)).to.eql(String(pm.collectionVariables.get('eurWalletId'))));",
+              "pm.collectionVariables.set('txA', t.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. retry same credit: idempotent",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{walletUrl}}/api/domain/{{domainId}}/wallet/{{ownerId}}/game-transaction/all",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"type\": \"bonus_deposit\", \"roundId\": null, \"subBalance\": {{bonusA}}, \"amount\": \"5.00\", \"currency\": \"USD\", \"providerTransactionId\": \"{{ptx}}-a\", \"gameSessionId\": \"cls4338\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200', () => pm.response.to.have.status(200));",
+              "const t = pm.response.json().transactions.find(x => x.type === 'bonus_deposit');",
+              "pm.test('same transaction returned', () => pm.expect(String(t.id)).to.eql(String(pm.collectionVariables.get('txA'))));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05. bonus information: A +5 once, B untouched",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{walletUrl}}/api/domain/{{domainId}}/bonuses/information",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"bonusIds\": [{{bonusA}}, {{bonusB}}], \"ownerIds\": [{{ownerId}}]}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200', () => pm.response.to.have.status(200));",
+              "const info = id => pm.response.json().find(b => String(b.id) === String(pm.collectionVariables.get(id)));",
+              "pm.test('bonus A balance is 5', () => pm.expect(info('bonusA').totalBalance).to.eql(5));",
+              "pm.test('bonus B balance is 0', () => pm.expect(info('bonusB').totalBalance).to.eql(0));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06. control: credit bonus B win from the USD session (same currency)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{walletUrl}}/api/domain/{{domainId}}/wallet/{{ownerId}}/game-transaction/all",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"type\": \"bonus_deposit\", \"roundId\": null, \"subBalance\": {{bonusB}}, \"amount\": \"5.00\", \"currency\": \"USD\", \"providerTransactionId\": \"{{ptx}}-b\", \"gameSessionId\": \"cls4338\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200', () => pm.response.to.have.status(200));",
+              "const t = pm.response.json().transactions.find(x => x.type === 'bonus_deposit');",
+              "pm.test('booked in USD', () => pm.expect(t.currency).to.eql('USD'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07. credit an unknown bonus: 404",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{walletUrl}}/api/domain/{{domainId}}/wallet/{{ownerId}}/game-transaction/all",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"type\": \"bonus_deposit\", \"roundId\": null, \"subBalance\": {{bonusUnknown}}, \"amount\": \"5.00\", \"currency\": \"USD\", \"providerTransactionId\": \"{{ptx}}-u\", \"gameSessionId\": \"cls4338\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('404', () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08. another player claims bonus C in EUR",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{walletUrl}}/api/domain/{{domainId}}/wallet/{{otherOwnerId}}/bonus-transaction",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"action\": \"claimed\", \"bonusId\": {{bonusC}}, \"currency\": \"EUR\", \"model\": \"wager\", \"amount\": null, \"wageringMultiplier\": \"35.00\", \"rewardType\": \"free_rounds\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09. credit another player's bonus C: 404",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{walletUrl}}/api/domain/{{domainId}}/wallet/{{ownerId}}/game-transaction/all",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"type\": \"bonus_deposit\", \"roundId\": null, \"subBalance\": {{bonusC}}, \"amount\": \"5.00\", \"currency\": \"EUR\", \"providerTransactionId\": \"{{ptx}}-c\", \"gameSessionId\": \"cls4338\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('404', () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

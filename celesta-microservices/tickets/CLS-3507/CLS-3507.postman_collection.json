@@ -1,0 +1,692 @@
+{
+  "info": {
+    "name": "CLS-3507 numerical custom attributes (BO)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "BO_baseUrl",
+      "value": "http://localhost:84"
+    },
+    {
+      "key": "BO_oauth_client_id",
+      "value": ""
+    },
+    {
+      "key": "BO_oauth_client_secret",
+      "value": ""
+    },
+    {
+      "key": "BO_username",
+      "value": ""
+    },
+    {
+      "key": "BO_password",
+      "value": ""
+    },
+    {
+      "key": "domainId",
+      "value": "1"
+    },
+    {
+      "key": "playerId",
+      "value": "1"
+    },
+    {
+      "key": "BO_access_token",
+      "value": ""
+    },
+    {
+      "key": "caPrefix",
+      "value": ""
+    },
+    {
+      "key": "caId",
+      "value": ""
+    },
+    {
+      "key": "caName",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "BO token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/oauth/2.0/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"client_id\": \"{{BO_oauth_client_id}}\",\n  \"client_secret\": \"{{BO_oauth_client_secret}}\",\n  \"username\": \"{{BO_username}}\",\n  \"password\": \"{{BO_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('BO_access_token', pm.response.json().access_token);",
+                  "pm.collectionVariables.set('caPrefix', 'cls3796_' + Date.now());"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Player",
+      "item": [
+        {
+          "name": "Create numerical configuration",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/custom-attributes-configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{caPrefix}}_points\",\n  \"type\": \"numerical\",\n  \"defaultValue\": \"0\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('type numerical', () => pm.expect(b.type).to.eql('numerical'));",
+                  "pm.collectionVariables.set('caId', b.id);",
+                  "pm.collectionVariables.set('caName', b.name);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create configuration without type is string",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/custom-attributes-configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{caPrefix}}_text\",\n  \"defaultValue\": \"x\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('type string', () => pm.expect(pm.response.json().type).to.eql('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST player configuration type image is refused",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/custom-attributes-configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{caPrefix}}_player_refused\",\n  \"type\": \"image\",\n  \"defaultValue\": \"0\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));",
+                  "pm.test('error on type', () => pm.expect(pm.response.json().errors.children.type.errors).to.include('The image type is not available for player custom attributes.'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create numerical configuration with default abc is refused",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/custom-attributes-configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{caPrefix}}_bad_default\",\n  \"type\": \"numerical\",\n  \"defaultValue\": \"abc\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List shows the default as a number",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/custom-attributes"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const item = pm.response.json().find(a => a.name === pm.collectionVariables.get('caName'));",
+                  "pm.test('default 0 as number', () => { pm.expect(item, 'attribute in list').to.exist; pm.expect(item.value).to.eql(0); pm.expect(typeof item.value).to.eql('number'); pm.expect(item.type).to.eql('numerical'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH 120",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/custom-attribute/{{caName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": \"120\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('value is 120 (JSON number or null)', () => { pm.expect(b.value).to.eql(120); pm.expect(typeof b.value).to.eql(\"number\"); });",
+                  "pm.test('type numerical', () => pm.expect(b.type).to.eql('numerical'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH 2.4",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/custom-attribute/{{caName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": \"2.4\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('value is 2.4 (JSON number or null)', () => { pm.expect(b.value).to.eql(2.4); pm.expect(typeof b.value).to.eql(\"number\"); });",
+                  "pm.test('type numerical', () => pm.expect(b.type).to.eql('numerical'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH -5",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/custom-attribute/{{caName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": \"-5\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('value is -5 (JSON number or null)', () => { pm.expect(b.value).to.eql(-5); pm.expect(typeof b.value).to.eql(\"number\"); });",
+                  "pm.test('type numerical', () => pm.expect(b.type).to.eql('numerical'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH 2.50 normalized",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/custom-attribute/{{caName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": \"2.50\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('value is 2.5 (JSON number or null)', () => { pm.expect(b.value).to.eql(2.5); pm.expect(typeof b.value).to.eql(\"number\"); });",
+                  "pm.test('type numerical', () => pm.expect(b.type).to.eql('numerical'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH 2.456 is refused",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/custom-attribute/{{caName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": \"2.456\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));",
+                  "pm.test('error mentions the number rule', () => pm.expect(pm.response.text()).to.include('number with up to 2 decimals'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH abc is refused",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/custom-attribute/{{caName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": \"abc\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));",
+                  "pm.test('error mentions the number rule', () => pm.expect(pm.response.text()).to.include('number with up to 2 decimals'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List keeps 2.5 as a number",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/custom-attributes"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const item = pm.response.json().find(a => a.name === pm.collectionVariables.get('caName'));",
+                  "pm.test('2.5 as number, unchanged by the refused PATCHes', () => { pm.expect(item, 'attribute in list').to.exist; pm.expect(item.value).to.eql(2.5); pm.expect(typeof item.value).to.eql('number'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT with type string keeps numerical",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/custom-attributes-configuration/{{caId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{caName}}\",\n  \"defaultValue\": \"0\",\n  \"type\": \"string\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('type still numerical', () => pm.expect(pm.response.json().type).to.eql('numerical'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT with default abc is refused",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/custom-attributes-configuration/{{caId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{caName}}\",\n  \"defaultValue\": \"abc\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH null clears",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/custom-attribute/{{caName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": null\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('value is None (JSON number or null)', () => { pm.expect(b.value).to.eql(null); pm.expect(typeof b.value).to.eql(\"object\"); });",
+                  "pm.test('type numerical', () => pm.expect(b.type).to.eql('numerical'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List shows the cleared value as null",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/player/{{playerId}}/custom-attributes"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const item = pm.response.json().find(a => a.name === pm.collectionVariables.get('caName'));",
+                  "pm.test('null, not 0', () => { pm.expect(item, 'attribute in list').to.exist; pm.expect(item.value).to.eql(null); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Game and reward configuration",
+      "item": [
+        {
+          "name": "POST game configuration type numerical is refused",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/game/custom-attributes-configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{caPrefix}}_game_refused\",\n  \"type\": \"numerical\",\n  \"defaultValue\": \"0\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));",
+                  "pm.test('error on type', () => pm.expect(pm.response.json().errors.children.type.errors).to.include('The numerical type is not available for game custom attributes.'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST reward_configuration configuration type numerical is refused",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{BO_access_token}}"
+              }
+            ],
+            "url": "{{BO_baseUrl}}/api/gateway/domain/{{domainId}}/reward_configuration/custom-attributes-configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{caPrefix}}_reward_configuration_refused\",\n  \"type\": \"numerical\",\n  \"defaultValue\": \"0\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));",
+                  "pm.test('error on type', () => pm.expect(pm.response.json().errors.children.type.errors).to.include('The numerical type is not available for reward_configuration custom attributes.'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

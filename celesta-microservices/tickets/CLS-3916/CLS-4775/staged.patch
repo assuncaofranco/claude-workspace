@@ -1,0 +1,765 @@
+diff --git a/composer.json b/composer.json
+index fc1bd825c2..4370c33d42 100644
+--- a/composer.json
++++ b/composer.json
+@@ -49,7 +49,7 @@
+         "lancasters/curl-library": "^2.27",
+         "lancasters/guard-library-bundle": "~2.3.16",
+         "lancasters/homepage-bundle": "^1.0",
+-        "lancasters/job-library": "^3.149",
++        "lancasters/job-library": "dev-CLS-4768 as 3.152",
+         "lancasters/monolog-helper-bundle": "^4.0",
+         "lancasters/symfony-components": "^1.10",
+         "lcobucci/jwt": "^5.0",
+diff --git a/composer.lock b/composer.lock
+index 9520806f7e..54ac8a5727 100644
+--- a/composer.lock
++++ b/composer.lock
+@@ -4,7 +4,7 @@
+         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+         "This file is @generated automatically"
+     ],
+-    "content-hash": "46fa969f3bb7ec1b13e1f40a7e40e046",
++    "content-hash": "1847ab43da52a59a1ef94b9b2f2a36dd",
+     "packages": [
+         {
+             "name": "async-aws/core",
+@@ -3538,16 +3538,16 @@
+         },
+         {
+             "name": "lancasters/job-library",
+-            "version": "v3.149",
++            "version": "dev-CLS-4768",
+             "source": {
+                 "type": "git",
+                 "url": "git@github.com:celesta-tech/celesta-job-library.git",
+-                "reference": "a52cf8a16f8ec3a9706da7fdcd976442c7f9261d"
++                "reference": "8b8f510dcae7d5e2094f46aaee409411df8d629e"
+             },
+             "dist": {
+                 "type": "zip",
+-                "url": "https://api.github.com/repos/celesta-tech/celesta-job-library/zipball/a52cf8a16f8ec3a9706da7fdcd976442c7f9261d",
+-                "reference": "a52cf8a16f8ec3a9706da7fdcd976442c7f9261d",
++                "url": "https://api.github.com/repos/celesta-tech/celesta-job-library/zipball/8b8f510dcae7d5e2094f46aaee409411df8d629e",
++                "reference": "8b8f510dcae7d5e2094f46aaee409411df8d629e",
+                 "shasum": "",
+                 "mirrors": [
+                     {
+@@ -3587,10 +3587,10 @@
+             ],
+             "description": "Job library",
+             "support": {
+-                "source": "https://github.com/celesta-tech/celesta-job-library/tree/v3.149",
++                "source": "https://github.com/celesta-tech/celesta-job-library/tree/CLS-4768",
+                 "issues": "https://github.com/celesta-tech/celesta-job-library/issues"
+             },
+-            "time": "2026-11-12T14:04:33+00:00"
++            "time": "2026-11-17T15:05:47+00:00"
+         },
+         {
+             "name": "lancasters/monolog-helper-bundle",
+@@ -17197,9 +17197,18 @@
+             "time": "2022-06-03T18:03:27+00:00"
+         }
+     ],
+-    "aliases": [],
++    "aliases": [
++        {
++            "package": "lancasters/job-library",
++            "version": "dev-CLS-4768",
++            "alias": "3.152",
++            "alias_normalized": "3.152.0.0"
++        }
++    ],
+     "minimum-stability": "stable",
+-    "stability-flags": {},
++    "stability-flags": {
++        "lancasters/job-library": 20
++    },
+     "prefer-stable": true,
+     "prefer-lowest": false,
+     "platform": {
+diff --git a/src/GatewayBundle/Controller/Promotion/GiftConfigurationController.php b/src/GatewayBundle/Controller/Promotion/GiftConfigurationController.php
+index b78c9a748b..3fc4e0a581 100644
+--- a/src/GatewayBundle/Controller/Promotion/GiftConfigurationController.php
++++ b/src/GatewayBundle/Controller/Promotion/GiftConfigurationController.php
+@@ -172,7 +172,7 @@ class GiftConfigurationController extends AbstractController
+             return $this->formHelper->handleV2Exception($ex);
+         }
+ 
+-        return new JsonResponse($this->giftNormalizer->normalizeMany($gifts));
++        return new JsonResponse($this->giftNormalizer->normalizeMany($domainId, $gifts));
+     }
+ 
+     #[OA\Get(
+diff --git a/src/GatewayBundle/Controller/Promotion/GiftController.php b/src/GatewayBundle/Controller/Promotion/GiftController.php
+index a8c12e94c7..a6b836daf3 100644
+--- a/src/GatewayBundle/Controller/Promotion/GiftController.php
++++ b/src/GatewayBundle/Controller/Promotion/GiftController.php
+@@ -99,7 +99,7 @@ class GiftController extends AbstractController
+             $gift,
+         );
+ 
+-        return new JsonResponse($this->giftNormalizer->normalizeOne($gift));
++        return new JsonResponse($this->giftNormalizer->normalizeOne($domainId, $gift));
+     }
+ 
+     #[OA\Get(
+@@ -146,7 +146,7 @@ class GiftController extends AbstractController
+             return $this->formHelper->handleV2Exception($e);
+         }
+ 
+-        return new JsonResponse($this->giftNormalizer->normalizeMany($gifts));
++        return new JsonResponse($this->giftNormalizer->normalizeMany($domainId, $gifts));
+     }
+ 
+     private function isValidationFailure(V2Exception $e): bool
+diff --git a/src/GatewayBundle/Normalizer/Promotion/GiftNormalizer.php b/src/GatewayBundle/Normalizer/Promotion/GiftNormalizer.php
+index 987eda770a..5f2a26db44 100644
+--- a/src/GatewayBundle/Normalizer/Promotion/GiftNormalizer.php
++++ b/src/GatewayBundle/Normalizer/Promotion/GiftNormalizer.php
+@@ -3,8 +3,10 @@
+ namespace App\GatewayBundle\Normalizer\Promotion;
+ 
+ use App\GatewayBundle\Normalizer\NormalizerTrait;
++use App\Library\PromotionClient;
+ use App\UserBundle\Entity\User;
+ use App\UserBundle\Repository\UserRepository;
++use CurlLibrary\Exception\V2Exception;
+ use Lancaster\Constants\Promotion\GiftConstants;
+ use OpenApi\Attributes as OA;
+ use Psr\Log\LoggerInterface;
+@@ -19,6 +21,7 @@ class GiftNormalizer
+ 
+     public function __construct(
+         private readonly UserRepository $userRepository,
++        private readonly PromotionClient $promotionClient,
+         private readonly LoggerInterface $logger,
+     ) {
+     }
+@@ -56,21 +59,29 @@ class GiftNormalizer
+         ]);
+     }
+ 
+-    public function normalizeOne(array $gift): array
++    public function normalizeOne(int $domainId, array $gift): array
+     {
+-        return $this->normalize($gift, $this->resolveUsers([$gift]));
++        return $this->normalize(
++            $gift,
++            $this->resolveUsers([$gift]),
++            $this->resolvePromotionConfigurations($domainId, [$gift]),
++        );
+     }
+ 
+-    public function normalizeMany(array $gifts): array
++    public function normalizeMany(int $domainId, array $gifts): array
+     {
+         $users = $this->resolveUsers($gifts);
++        $promotionConfigurations = $this->resolvePromotionConfigurations($domainId, $gifts);
+ 
+-        return array_map(fn (array $gift): array => $this->normalize($gift, $users), $gifts);
++        return array_map(
++            fn (array $gift): array => $this->normalize($gift, $users, $promotionConfigurations),
++            $gifts,
++        );
+     }
+ 
+     #[OA\Schema(
+         schema: 'GiftCreatedBy',
+-        description: 'The BO user who recorded the gift. Null for a scenario gift or a user that no longer resolves.',
++        description: 'The BO user who recorded the gift, or the promotion configuration that offered it. Null for a scenario gift or a source that no longer resolves.',
+         properties: [
+             new OA\Property(property: 'id', type: 'integer', example: 1),
+             new OA\Property(property: 'name', type: 'string', example: 'Marta Kulas'),
+@@ -116,11 +127,18 @@ class GiftNormalizer
+                 example: 12,
+                 nullable: true,
+             ),
++            new OA\Property(
++                property: 'sourcePromotionId',
++                description: 'The promotion configuration that offered the gift. Null when a BO user or a scenario recorded it.',
++                type: 'integer',
++                example: 5,
++                nullable: true,
++            ),
+             new OA\Property(property: 'createdAt', type: 'string', example: '2026-09-22 11:07:20'),
+             new OA\Property(property: 'updatedAt', type: 'string', example: '2026-09-22 11:07:20', nullable: true),
+         ]
+     )]
+-    public function normalize(array $gift, array $users = []): array
++    public function normalize(array $gift, array $users = [], ?array $promotionConfigurations = []): array
+     {
+         return [
+             'id' => $gift['id'],
+@@ -133,8 +151,9 @@ class GiftNormalizer
+             'description' => $gift['description'] ?? null,
+             'reasonId' => $gift['reasonId'] ?? null,
+             'reason' => $gift['reasonName'] ?? null,
+-            'createdBy' => $this->normalizeCreatedBy($gift, $users),
++            'createdBy' => $this->normalizeCreatedBy($gift, $users, $promotionConfigurations),
+             'sourceScenarioId' => $gift['sourceScenarioId'] ?? null,
++            'sourcePromotionId' => $gift['sourcePromotionId'] ?? null,
+             'createdAt' => $gift['createdAt'] ?? null,
+             'updatedAt' => $gift['updatedAt'] ?? null,
+         ];
+@@ -175,27 +194,77 @@ class GiftNormalizer
+         return $users;
+     }
+ 
+-    private function normalizeCreatedBy(array $gift, array $users): ?array
++    /**
++     * @return array<int, array>|null promotion configurations indexed by id, null when the lookup failed
++     */
++    private function resolvePromotionConfigurations(int $domainId, array $gifts): ?array
++    {
++        $ids = array_values(array_unique(array_filter(
++            array_column($gifts, 'sourcePromotionId'),
++            static fn ($id): bool => $id !== null
++        )));
++
++        if ($ids === []) {
++            return [];
++        }
++
++        try {
++            $configurations = $this->promotionClient->getPromotionConfigurations($domainId, [
++                'filter' => ['ids' => $ids],
++                'limit' => count($ids),
++                'offset' => 0,
++            ]);
++        } catch (V2Exception) {
++            $this->logger->error('Gift source promotions could not be fetched', [
++                'source_promotion_ids' => $ids,
++            ]);
++
++            return null;
++        }
++
++        return array_column($configurations, null, 'id');
++    }
++
++    private function normalizeCreatedBy(array $gift, array $users, ?array $promotionConfigurations): ?array
+     {
+         $userId = $gift['sourceUserId'] ?? null;
+ 
+-        if ($userId === null) {
++        if ($userId !== null) {
++            $user = $users[$userId] ?? null;
++            if ($user === null) {
++                $this->logger->error('Gift source user does not resolve to a BO user', [
++                    'gift_id' => $gift['id'] ?? null,
++                    'source_user_id' => $userId,
++                ]);
++
++                return null;
++            }
++
++            return [
++                'id' => $user->getId(),
++                'name' => $user->getFullName(),
++            ];
++        }
++
++        $promotionId = $gift['sourcePromotionId'] ?? null;
++
++        if ($promotionId === null || $promotionConfigurations === null) {
+             return null;
+         }
+ 
+-        $user = $users[$userId] ?? null;
+-        if ($user === null) {
+-            $this->logger->error('Gift source user does not resolve to a BO user', [
++        $configuration = $promotionConfigurations[$promotionId] ?? null;
++        if ($configuration === null) {
++            $this->logger->error('Gift source promotion does not resolve to a promotion configuration', [
+                 'gift_id' => $gift['id'] ?? null,
+-                'source_user_id' => $userId,
++                'source_promotion_id' => $promotionId,
+             ]);
+ 
+             return null;
+         }
+ 
+         return [
+-            'id' => $user->getId(),
+-            'name' => $user->getFullName(),
++            'id' => $configuration['id'],
++            'name' => $configuration['name'],
+         ];
+     }
+ }
+diff --git a/tests/GatewayBundle/Controller/LogControllerTest.php b/tests/GatewayBundle/Controller/LogControllerTest.php
+index 38dbc5a32f..cd15dddd73 100644
+--- a/tests/GatewayBundle/Controller/LogControllerTest.php
++++ b/tests/GatewayBundle/Controller/LogControllerTest.php
+@@ -3,6 +3,7 @@
+ namespace Tests\GatewayBundle\Controller;
+ 
+ use Tests\GatewayBundle\GatewayTestCase;
++use Tests\Support\QueryAwareMockClient;
+ 
+ class LogControllerTest extends GatewayTestCase
+ {
+@@ -158,6 +159,38 @@ class LogControllerTest extends GatewayTestCase
+         $this->assertEquals(21, $responseContent['value']);
+     }
+ 
++    public function testGetLogsFilterActionForwardsThePromotionSourceType(): void
++    {
++        self::mockGetUserActivities();
++        QueryAwareMockClient::resetLastRequestQueries();
++
++        self::$client->request('POST', '/api/gateway/logs', [
++            'filter' => ['sourceTypes' => ['promotion'], 'sourceIds' => [5], 'domainIds' => [1]],
++        ], [], ['HTTP_Authorization' => self::$accessToken]);
++
++        $response = self::$client->getResponse();
++        $this->assertSame(200, $response->getStatusCode());
++        $this->assertCount(2, json_decode($response->getContent(), true));
++        $query = QueryAwareMockClient::getLastRequestQuery('get', 'api/user-activities');
++        $this->assertSame(['promotion'], $query['filter']['sourceTypes']);
++    }
++
++    public function testGetLogsFilterCountActionForwardsThePromotionSourceType(): void
++    {
++        self::mockGetUserActivitiesAggregate();
++        QueryAwareMockClient::resetLastRequestBodies();
++
++        self::$client->request('POST', '/api/gateway/logs/count', [
++            'filter' => ['sourceTypes' => ['promotion'], 'sourceIds' => [5], 'domainIds' => [1]],
++        ], [], ['HTTP_Authorization' => self::$accessToken]);
++
++        $response = self::$client->getResponse();
++        $this->assertSame(200, $response->getStatusCode());
++        $this->assertSame(21, json_decode($response->getContent(), true)['value']);
++        $body = json_decode(QueryAwareMockClient::getLastRequestBody('post', 'api/user-activities/aggregate'), true);
++        $this->assertSame(['promotion'], $body['filter']['sourceTypes']);
++    }
++
+     public function testGetLogsFilterActionReturnsActivityServiceErrors(): void
+     {
+         self::mockV2Error('GET', 'http://activityweb.docker/api/user-activities', 500);
+diff --git a/tests/GatewayBundle/Controller/Promotion/GiftConfigurationControllerTest.php b/tests/GatewayBundle/Controller/Promotion/GiftConfigurationControllerTest.php
+index c3d5549f12..41a1549e99 100644
+--- a/tests/GatewayBundle/Controller/Promotion/GiftConfigurationControllerTest.php
++++ b/tests/GatewayBundle/Controller/Promotion/GiftConfigurationControllerTest.php
+@@ -311,6 +311,20 @@ class GiftConfigurationControllerTest extends GatewayTestCase
+         $this->assertSame(['field' => 'createdAt', 'direction' => 'desc'], $query['order']);
+     }
+ 
++    public function testListsAPromotionGiftOfAConfigurationWithItsPromotionAsTheCreator(): void
++    {
++        self::mockGetGifts(1, [self::promotionGiftRow(4, 12, ['sourceUserId' => null, 'sourcePromotionId' => 5])]);
++        self::mockGetPromotionConfigurationsByIds(1, [['id' => 5, 'name' => 'VIP tier', 'status' => 'enabled']]);
++
++        self::$client->request('GET', self::GIFTS_URL, ['filter' => ['rewardConfigurationIds' => [7]]], [], ['HTTP_Authorization' => self::$accessToken]);
++
++        $response = self::$client->getResponse();
++        $this->assertSame(Response::HTTP_OK, $response->getStatusCode());
++        $gift = json_decode($response->getContent(), true)[0];
++        $this->assertSame(['id' => 5, 'name' => 'VIP tier'], $gift['createdBy']);
++        $this->assertSame(5, $gift['sourcePromotionId']);
++    }
++
+     public function testDefaultsThePageOfTheConfigurationGifts(): void
+     {
+         QueryAwareMockClient::resetLastRequestQueries();
+diff --git a/tests/GatewayBundle/Controller/Promotion/GiftControllerTest.php b/tests/GatewayBundle/Controller/Promotion/GiftControllerTest.php
+index 4abcee9073..4e9db28c07 100644
+--- a/tests/GatewayBundle/Controller/Promotion/GiftControllerTest.php
++++ b/tests/GatewayBundle/Controller/Promotion/GiftControllerTest.php
+@@ -80,6 +80,7 @@ class GiftControllerTest extends GatewayTestCase
+             'reason' => 'Birthday',
+             'createdBy' => ['id' => 1, 'name' => 'Marta Kulas'],
+             'sourceScenarioId' => null,
++            'sourcePromotionId' => null,
+             'createdAt' => '2026-09-22 10:15:00',
+             'updatedAt' => '2026-09-22 10:15:00',
+         ], json_decode($response->getContent(), true));
+@@ -399,6 +400,7 @@ class GiftControllerTest extends GatewayTestCase
+                 'reason' => 'Christmas',
+                 'createdBy' => ['id' => 1, 'name' => 'Marta Kulas'],
+                 'sourceScenarioId' => null,
++                'sourcePromotionId' => null,
+                 'createdAt' => '2026-09-22 12:00:00',
+                 'updatedAt' => '2026-09-22 10:15:00',
+             ],
+@@ -415,6 +417,7 @@ class GiftControllerTest extends GatewayTestCase
+                 'reason' => null,
+                 'createdBy' => ['id' => 1, 'name' => 'Marta Kulas'],
+                 'sourceScenarioId' => null,
++                'sourcePromotionId' => null,
+                 'createdAt' => '2026-09-22 10:15:00',
+                 'updatedAt' => '2026-09-22 10:15:00',
+             ],
+@@ -445,12 +448,65 @@ class GiftControllerTest extends GatewayTestCase
+                 'reason' => null,
+                 'createdBy' => null,
+                 'sourceScenarioId' => 12,
++                'sourcePromotionId' => null,
+                 'createdAt' => '2026-09-22 10:15:00',
+                 'updatedAt' => '2026-09-22 10:15:00',
+             ],
+         ], json_decode($response->getContent(), true));
+     }
+ 
++    public function testListsAPromotionGiftWithItsPromotionAsTheCreator(): void
++    {
++        QueryAwareMockClient::resetLastRequestQueries();
++        self::mockGetGifts(1, [
++            self::promotionGiftRow(5, 1, ['sourceUserId' => null, 'sourcePromotionId' => 5]),
++            self::promotionGiftRow(1, 1),
++        ]);
++        self::mockGetPromotionConfigurationsByIds(1, [
++            ['id' => 5, 'name' => 'VIP tier', 'status' => 'disabled'],
++        ]);
++
++        self::$client->request('GET', self::LIST_URL, [], [], ['HTTP_Authorization' => self::$accessToken]);
++
++        $response = self::$client->getResponse();
++        $this->assertSame(Response::HTTP_OK, $response->getStatusCode());
++        $gifts = json_decode($response->getContent(), true);
++        $this->assertSame(['id' => 5, 'name' => 'VIP tier'], $gifts[0]['createdBy']);
++        $this->assertSame(5, $gifts[0]['sourcePromotionId']);
++        $this->assertNull($gifts[0]['sourceScenarioId']);
++        $this->assertSame(['id' => 1, 'name' => 'Marta Kulas'], $gifts[1]['createdBy']);
++        $this->assertNull($gifts[1]['sourcePromotionId']);
++        $query = QueryAwareMockClient::getLastRequestQuery('get', 'api/domain/1/promotion-configurations');
++        $this->assertSame(['ids' => [5]], $query['filter']);
++        $this->assertSame(1, $query['limit']);
++        $this->assertSame(0, $query['offset']);
++    }
++
++    public function testListsAPromotionGiftWithNoCreatorWhenPromotionConfigurationsCannotBeFetched(): void
++    {
++        self::mockGetGifts(1, [self::promotionGiftRow(5, 1, ['sourceUserId' => null, 'sourcePromotionId' => 5])]);
++        self::mockV2Error('GET', self::PROMOTION_HOST . '/api/domain/1/promotion-configurations', Response::HTTP_INTERNAL_SERVER_ERROR);
++
++        self::$client->request('GET', self::LIST_URL, [], [], ['HTTP_Authorization' => self::$accessToken]);
++
++        $response = self::$client->getResponse();
++        $this->assertSame(Response::HTTP_OK, $response->getStatusCode());
++        $gift = json_decode($response->getContent(), true)[0];
++        $this->assertNull($gift['createdBy']);
++        $this->assertSame(5, $gift['sourcePromotionId']);
++    }
++
++    public function testDoesNotLookUpPromotionConfigurationsWhenNoGiftComesFromAPromotion(): void
++    {
++        QueryAwareMockClient::resetLastRequestQueries();
++        self::mockGetGifts(1, [self::promotionGiftRow(1, 1), self::promotionGiftRow(3, 1, ['sourceUserId' => null, 'sourceScenarioId' => 12])]);
++
++        self::$client->request('GET', self::LIST_URL, [], [], ['HTTP_Authorization' => self::$accessToken]);
++
++        $this->assertSame(Response::HTTP_OK, self::$client->getResponse()->getStatusCode());
++        $this->assertFalse(QueryAwareMockClient::wasRequested('get', 'api/domain/1/promotion-configurations'));
++    }
++
+     public function testReturnsAnEmptyListWhenThePlayerHasNoGift(): void
+     {
+         self::mockGetGifts(1, []);
+diff --git a/tests/GatewayBundle/Normalizer/Player/LogNormalizerDescriptionTest.php b/tests/GatewayBundle/Normalizer/Player/LogNormalizerDescriptionTest.php
+index 3261de14b9..98fb863fbd 100644
+--- a/tests/GatewayBundle/Normalizer/Player/LogNormalizerDescriptionTest.php
++++ b/tests/GatewayBundle/Normalizer/Player/LogNormalizerDescriptionTest.php
+@@ -73,6 +73,18 @@ class LogNormalizerDescriptionTest extends TestCase
+             ['name' => 'Birthday hamper', 'value' => '150.50', 'currency' => 'EUR', 'reason_name' => null],
+             'Birthday hamper | 150.50 EUR',
+         ];
++        yield 'promotion gift offered with a reason' => [
++            UserActivityJob::EVENT_GIFT_OFFERED,
++            UserActivityJob::SOURCE_TYPE_PROMOTION,
++            ['name' => 'Birthday hamper', 'value' => '150.50', 'currency' => 'EUR', 'reason_name' => 'Birthday'],
++            'Birthday hamper | 150.50 EUR | Reason: Birthday',
++        ];
++        yield 'promotion gift offered without a reason' => [
++            UserActivityJob::EVENT_GIFT_OFFERED,
++            UserActivityJob::SOURCE_TYPE_PROMOTION,
++            ['name' => 'Birthday hamper', 'value' => '150.50', 'currency' => 'EUR', 'reason_name' => null],
++            'Birthday hamper | 150.50 EUR',
++        ];
+         yield 'gift offered without data' => [UserActivityJob::EVENT_GIFT_OFFERED, $user, [], ' |  '];
+         yield 'status changed without statuses' => [UserActivityJob::EVENT_PLAYER_STATUS_CHANGED, $user, [], ' -> '];
+         yield 'status changed with a reason' => [
+diff --git a/tests/GatewayBundle/Normalizer/Promotion/GiftNormalizerTest.php b/tests/GatewayBundle/Normalizer/Promotion/GiftNormalizerTest.php
+index 93caa6826b..2d01b5d20e 100644
+--- a/tests/GatewayBundle/Normalizer/Promotion/GiftNormalizerTest.php
++++ b/tests/GatewayBundle/Normalizer/Promotion/GiftNormalizerTest.php
+@@ -5,23 +5,29 @@ declare(strict_types=1);
+ namespace Tests\GatewayBundle\Normalizer\Promotion;
+ 
+ use App\GatewayBundle\Normalizer\Promotion\GiftNormalizer;
++use App\Library\PromotionClient;
+ use App\OAuth2Bundle\Security\User\User;
+ use App\UserBundle\Entity\User as UserEntity;
+ use App\UserBundle\Repository\UserRepository;
++use CurlLibrary\Exception\V2Exception;
+ use PHPUnit\Framework\TestCase;
+ use Psr\Log\LoggerInterface;
+ 
+ class GiftNormalizerTest extends TestCase
+ {
++    private const int DOMAIN_ID = 1;
++
+     private UserRepository $userRepository;
++    private PromotionClient $promotionClient;
+     private LoggerInterface $logger;
+     private GiftNormalizer $normalizer;
+ 
+     protected function setUp(): void
+     {
+         $this->userRepository = $this->createMock(UserRepository::class);
++        $this->promotionClient = $this->createMock(PromotionClient::class);
+         $this->logger = $this->createMock(LoggerInterface::class);
+-        $this->normalizer = new GiftNormalizer($this->userRepository, $this->logger);
++        $this->normalizer = new GiftNormalizer($this->userRepository, $this->promotionClient, $this->logger);
+     }
+ 
+     public function testOfferRequestRenamesValueToAmountAndAddsTheSourceUser(): void
+@@ -60,6 +66,7 @@ class GiftNormalizerTest extends TestCase
+     public function testNormalizeOneReturnsTheConfigurationThePlayerAndTheUpdateTime(): void
+     {
+         $result = $this->normalizer->normalizeOne(
++            self::DOMAIN_ID,
+             ['rewardConfigurationId' => 7, 'playerId' => 3, 'updatedAt' => '2026-09-23 08:00:00'] + $this->gift(1, null)
+         );
+ 
+@@ -71,7 +78,7 @@ class GiftNormalizerTest extends TestCase
+ 
+     public function testNormalizeOneDefaultsTheConfigurationThePlayerAndTheUpdateTimeToNull(): void
+     {
+-        $result = $this->normalizer->normalizeOne($this->gift(1, null));
++        $result = $this->normalizer->normalizeOne(self::DOMAIN_ID, $this->gift(1, null));
+ 
+         $this->assertNull($result['rewardConfigurationId']);
+         $this->assertNull($result['playerId']);
+@@ -132,7 +139,7 @@ class GiftNormalizerTest extends TestCase
+     {
+         $gift = ['reasonId' => 4, 'reasonName' => 'Birthday'] + $this->gift(1, null);
+ 
+-        $result = $this->normalizer->normalizeOne($gift);
++        $result = $this->normalizer->normalizeOne(self::DOMAIN_ID, $gift);
+ 
+         $this->assertSame(4, $result['reasonId']);
+         $this->assertSame('Birthday', $result['reason']);
+@@ -165,7 +172,7 @@ class GiftNormalizerTest extends TestCase
+         $author->method('getFullName')->willReturn('Marta Kulas');
+         $this->userRepository->method('getUsersByIds')->with([1])->willReturn([$author]);
+ 
+-        $result = $this->normalizer->normalizeOne($this->gift(1, 1));
++        $result = $this->normalizer->normalizeOne(self::DOMAIN_ID, $this->gift(1, 1));
+ 
+         $this->assertSame(['id' => 1, 'name' => 'Marta Kulas'], $result['createdBy']);
+         $this->assertNull($result['sourceScenarioId']);
+@@ -176,7 +183,7 @@ class GiftNormalizerTest extends TestCase
+         $this->userRepository->expects($this->never())->method('getUsersByIds');
+         $this->logger->expects($this->never())->method('error');
+ 
+-        $result = $this->normalizer->normalizeOne($this->gift(1, null, 12));
++        $result = $this->normalizer->normalizeOne(self::DOMAIN_ID, $this->gift(1, null, 12));
+ 
+         $this->assertNull($result['createdBy']);
+         $this->assertSame(12, $result['sourceScenarioId']);
+@@ -187,7 +194,7 @@ class GiftNormalizerTest extends TestCase
+         $gift = $this->gift(1, null);
+         unset($gift['sourceScenarioId']);
+ 
+-        $result = $this->normalizer->normalizeOne($gift);
++        $result = $this->normalizer->normalizeOne(self::DOMAIN_ID, $gift);
+ 
+         $this->assertNull($result['sourceScenarioId']);
+         $this->assertNull($result['createdBy']);
+@@ -203,7 +210,7 @@ class GiftNormalizerTest extends TestCase
+         $this->userRepository->expects($this->once())->method('getUsersByIds')->with([1, 99])->willReturn([$author]);
+         $this->logger->expects($this->once())->method('error');
+ 
+-        $result = $this->normalizer->normalizeMany([
++        $result = $this->normalizer->normalizeMany(self::DOMAIN_ID, [
+             $this->gift(1, 1),
+             $this->gift(2, 1),
+             $this->gift(3, 99),
+@@ -227,7 +234,125 @@ class GiftNormalizerTest extends TestCase
+ 
+         $gift = ['sourceUserId' => null] + $this->gift(1, 1);
+ 
+-        $this->assertNull($this->normalizer->normalizeOne($gift)['createdBy']);
++        $this->assertNull($this->normalizer->normalizeOne(self::DOMAIN_ID, $gift)['createdBy']);
++    }
++
++    public function testAPromotionGiftResolvesToItsPromotionConfiguration(): void
++    {
++        $this->userRepository->expects($this->never())->method('getUsersByIds');
++        $this->logger->expects($this->never())->method('error');
++        $this->promotionClient->expects($this->once())
++            ->method('getPromotionConfigurations')
++            ->with(self::DOMAIN_ID, ['filter' => ['ids' => [5]], 'limit' => 1, 'offset' => 0])
++            ->willReturn([$this->configuration(5, 'VIP tier')]);
++
++        $result = $this->normalizer->normalizeOne(self::DOMAIN_ID, $this->promotionGift(1, 5));
++
++        $this->assertSame(['id' => 5, 'name' => 'VIP tier'], $result['createdBy']);
++        $this->assertSame(5, $result['sourcePromotionId']);
++        $this->assertNull($result['sourceScenarioId']);
++    }
++
++    public function testNormalizeManyLooksUpTheUsersAndThePromotionsOncePerList(): void
++    {
++        $author = $this->createMock(UserEntity::class);
++        $author->method('getId')->willReturn(1);
++        $author->method('getFullName')->willReturn('Marta Kulas');
++        $this->userRepository->expects($this->once())->method('getUsersByIds')->with([1])->willReturn([$author]);
++        $this->promotionClient->expects($this->once())
++            ->method('getPromotionConfigurations')
++            ->with(self::DOMAIN_ID, ['filter' => ['ids' => [5, 6]], 'limit' => 2, 'offset' => 0])
++            ->willReturn([$this->configuration(6, 'Birthday'), $this->configuration(5, 'VIP tier')]);
++        $this->logger->expects($this->never())->method('error');
++
++        $result = $this->normalizer->normalizeMany(self::DOMAIN_ID, [
++            $this->gift(1, 1),
++            $this->promotionGift(2, 5),
++            $this->gift(3, null, 12),
++            $this->promotionGift(4, 6),
++            $this->promotionGift(5, 5),
++        ]);
++
++        $this->assertSame(['id' => 1, 'name' => 'Marta Kulas'], $result[0]['createdBy']);
++        $this->assertNull($result[0]['sourcePromotionId']);
++        $this->assertSame(['id' => 5, 'name' => 'VIP tier'], $result[1]['createdBy']);
++        $this->assertSame(5, $result[1]['sourcePromotionId']);
++        $this->assertNull($result[2]['createdBy']);
++        $this->assertSame(12, $result[2]['sourceScenarioId']);
++        $this->assertNull($result[2]['sourcePromotionId']);
++        $this->assertSame(['id' => 6, 'name' => 'Birthday'], $result[3]['createdBy']);
++        $this->assertSame(['id' => 5, 'name' => 'VIP tier'], $result[4]['createdBy']);
++    }
++
++    public function testNoPromotionIsLookedUpWhenNoGiftHasASourcePromotion(): void
++    {
++        $this->promotionClient->expects($this->never())->method('getPromotionConfigurations');
++
++        $result = $this->normalizer->normalizeMany(self::DOMAIN_ID, [$this->gift(1, null), $this->gift(2, null, 12)]);
++
++        $this->assertNull($result[0]['sourcePromotionId']);
++        $this->assertNull($result[1]['sourcePromotionId']);
++    }
++
++    public function testAPromotionMissingFromTheLookupGivesANullCreatedByAndLogsIt(): void
++    {
++        $this->promotionClient->method('getPromotionConfigurations')->willReturn([$this->configuration(6, 'Birthday')]);
++        $this->logger->expects($this->once())
++            ->method('error')
++            ->with(
++                'Gift source promotion does not resolve to a promotion configuration',
++                ['gift_id' => 1, 'source_promotion_id' => 5],
++            );
++
++        $result = $this->normalizer->normalizeOne(self::DOMAIN_ID, $this->promotionGift(1, 5));
++
++        $this->assertNull($result['createdBy']);
++        $this->assertSame(5, $result['sourcePromotionId']);
++    }
++
++    public function testAFailedPromotionLookupGivesANullCreatedByToPromotionGiftsOnly(): void
++    {
++        $author = $this->createMock(UserEntity::class);
++        $author->method('getId')->willReturn(1);
++        $author->method('getFullName')->willReturn('Marta Kulas');
++        $this->userRepository->method('getUsersByIds')->willReturn([$author]);
++        $this->promotionClient->expects($this->once())
++            ->method('getPromotionConfigurations')
++            ->willThrowException(new V2Exception('promotion is down'));
++        $this->logger->expects($this->once())
++            ->method('error')
++            ->with('Gift source promotions could not be fetched', ['source_promotion_ids' => [5]]);
++
++        $result = $this->normalizer->normalizeMany(self::DOMAIN_ID, [$this->gift(1, 1), $this->promotionGift(2, 5)]);
++
++        $this->assertSame(['id' => 1, 'name' => 'Marta Kulas'], $result[0]['createdBy']);
++        $this->assertNull($result[1]['createdBy']);
++        $this->assertSame(5, $result[1]['sourcePromotionId']);
++    }
++
++    public function testNormalizeOneDefaultsTheSourcePromotionToNullWhenPromotionDoesNotSendIt(): void
++    {
++        $this->promotionClient->expects($this->never())->method('getPromotionConfigurations');
++        $gift = $this->gift(1, null);
++        unset($gift['sourcePromotionId']);
++
++        $result = $this->normalizer->normalizeOne(self::DOMAIN_ID, $gift);
++
++        $this->assertNull($result['sourcePromotionId']);
++        $this->assertNull($result['createdBy']);
++    }
++
++    public function testASourceUserWinsOverASourcePromotion(): void
++    {
++        $author = $this->createMock(UserEntity::class);
++        $author->method('getId')->willReturn(1);
++        $author->method('getFullName')->willReturn('Marta Kulas');
++        $this->userRepository->method('getUsersByIds')->willReturn([$author]);
++        $this->promotionClient->method('getPromotionConfigurations')->willReturn([$this->configuration(5, 'VIP tier')]);
++
++        $result = $this->normalizer->normalizeOne(self::DOMAIN_ID, ['sourcePromotionId' => 5] + $this->gift(1, 1));
++
++        $this->assertSame(['id' => 1, 'name' => 'Marta Kulas'], $result['createdBy']);
+     }
+ 
+     public function testPromotionAmountErrorsAreRenamedToValueInTheFormChildren(): void
+@@ -280,6 +405,16 @@ class GiftNormalizerTest extends TestCase
+         $this->assertSame(['value' => ['too many decimals'], 'currency' => ['not held']], $result['errors']);
+     }
+ 
++    private function promotionGift(int $id, int $sourcePromotionId): array
++    {
++        return ['sourcePromotionId' => $sourcePromotionId] + $this->gift($id, null);
++    }
++
++    private function configuration(int $id, string $name): array
++    {
++        return ['id' => $id, 'name' => $name, 'status' => 'enabled'];
++    }
++
+     private function gift(int $id, ?int $sourceUserId, ?int $sourceScenarioId = null): array
+     {
+         return [
+@@ -291,6 +426,7 @@ class GiftNormalizerTest extends TestCase
+             'description' => null,
+             'sourceUserId' => $sourceUserId,
+             'sourceScenarioId' => $sourceScenarioId,
++            'sourcePromotionId' => null,
+             'createdAt' => '2026-09-22 10:15:00',
+         ];
+     }
+diff --git a/tests/Traits/PromotionClientMockTrait.php b/tests/Traits/PromotionClientMockTrait.php
+index b1fa453967..bbcf8753a3 100644
+--- a/tests/Traits/PromotionClientMockTrait.php
++++ b/tests/Traits/PromotionClientMockTrait.php
+@@ -1059,6 +1059,19 @@ trait PromotionClientMockTrait
+         );
+     }
+ 
++    /**
++     * @param array<int, array<string, mixed>> $configurations
++     */
++    public static function mockGetPromotionConfigurationsByIds(int $domainId, array $configurations): void
++    {
++        self::mockMethod(
++            'GET',
++            self::PROMOTION_HOST . "/api/domain/$domainId/promotion-configurations",
++            200,
++            json_encode($configurations, JSON_THROW_ON_ERROR)
++        );
++    }
++
+     public static function mockGetGiftsAggregate(int $domainId, int $count): void
+     {
+         self::mockMethod('GET', self::PROMOTION_HOST . "/api/domain/$domainId/gifts/aggregate", 200, (string) $count);
+@@ -1088,6 +1101,7 @@ trait PromotionClientMockTrait
+             'description' => 'Handed over at the VIP dinner',
+             'sourceUserId' => 1,
+             'sourceScenarioId' => null,
++            'sourcePromotionId' => null,
+             'createdAt' => '2026-09-22 10:15:00',
+             'updatedAt' => '2026-09-22 10:15:00',
+         ], $overrides);

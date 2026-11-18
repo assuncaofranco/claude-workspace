@@ -1,0 +1,14 @@
+composer.json
+composer.lock
+src/GatewayBundle/Controller/Promotion/GiftConfigurationController.php
+src/GatewayBundle/Controller/Promotion/GiftController.php
+src/GatewayBundle/Controller/Promotion/GiftRequestController.php
+src/GatewayBundle/Normalizer/Promotion/GiftNormalizer.php
+tests/GatewayBundle/Controller/LogControllerTest.php
+tests/GatewayBundle/Controller/Promotion/GiftConfigurationControllerTest.php
+tests/GatewayBundle/Controller/Promotion/GiftControllerHttpTest.php
+tests/GatewayBundle/Controller/Promotion/GiftControllerTest.php
+tests/GatewayBundle/Normalizer/Player/LogNormalizerDescriptionTest.php
+tests/GatewayBundle/Normalizer/Promotion/GiftNormalizerTest.php
+tests/GatewayBundle/Normalizer/Promotion/GiftRequestNormalizerTest.php
+tests/Traits/PromotionClientMockTrait.php

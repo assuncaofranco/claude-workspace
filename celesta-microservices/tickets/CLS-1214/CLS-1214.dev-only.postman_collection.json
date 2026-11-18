@@ -1,0 +1,122 @@
+{
+  "info": {
+    "name": "CLS-1214 DEV-ONLY: payment rejects an invalid combined list",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Direct calls to payment, guard-signed. Both are rejected by the form before any lock, row or provider call. Not PO-runnable: payment is not reachable from preprod."
+  },
+  "item": [
+    {
+      "name": "DEV-ONLY payment payout form",
+      "item": [
+        {
+          "name": "DEV-ONLY payment: payout with 70 request ids -> 400, nothing written",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{paymentUrl}}/domain/{{domainId}}/payment-configuration/{{cfgA}}/payout",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payoutInformation\": {},\n  \"amount\": 100,\n  \"fee\": null,\n  \"clientId\": \"{{playerId}}\",\n  \"additionalData\": {\n    \"withdrawRequestId\": \"900000001\",\n    \"withdrawRequestIds\": [\n      900000001,\n      900000002,\n      900000003,\n      900000004,\n      900000005,\n      900000006,\n      900000007,\n      900000008,\n      900000009,\n      900000010,\n      900000011,\n      900000012,\n      900000013,\n      900000014,\n      900000015,\n      900000016,\n      900000017,\n      900000018,\n      900000019,\n      900000020,\n      900000021,\n      900000022,\n      900000023,\n      900000024,\n      900000025,\n      900000026,\n      900000027,\n      900000028,\n      900000029,\n      900000030,\n      900000031,\n      900000032,\n      900000033,\n      900000034,\n      900000035,\n      900000036,\n      900000037,\n      900000038,\n      900000039,\n      900000040,\n      900000041,\n      900000042,\n      900000043,\n      900000044,\n      900000045,\n      900000046,\n      900000047,\n      900000048,\n      900000049,\n      900000050,\n      900000051,\n      900000052,\n      900000053,\n      900000054,\n      900000055,\n      900000056,\n      900000057,\n      900000058,\n      900000059,\n      900000060,\n      900000061,\n      900000062,\n      900000063,\n      900000064,\n      900000065,\n      900000066,\n      900000067,\n      900000068,\n      900000069,\n      900000070\n    ]\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const url = pm.variables.replaceIn(pm.request.url.toString());",
+                  "const m = url.match(/^https?:\\/\\/([^\\/:]+)(?::(\\d+))?([^?]*)/);",
+                  "const method = pm.request.method.toUpperCase();",
+                  "let signed = method + m[1] + decodeURIComponent(m[3]);",
+                  "if (['POST', 'PUT', 'PATCH'].includes(method)) { signed += CryptoJS.MD5(pm.variables.replaceIn(pm.request.body.raw)).toString(); }",
+                  "pm.request.headers.upsert({ key: 'x-guard-secret', value: CryptoJS.HmacSHA256(signed, pm.variables.get('guardKey')).toString() });"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "console.log('400 body: ' + pm.response.text().slice(0, 600));",
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('the violation is on withdrawRequestIds', () => pm.expect(pm.response.text()).to.include('withdrawRequestIds'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DEV-ONLY payment: lead not in the list -> 400, nothing written",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{paymentUrl}}/domain/{{domainId}}/payment-configuration/{{cfgA}}/payout",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payoutInformation\": {},\n  \"amount\": 100,\n  \"fee\": null,\n  \"clientId\": \"{{playerId}}\",\n  \"additionalData\": {\n    \"withdrawRequestId\": \"900000999\",\n    \"withdrawRequestIds\": [\n      900000001,\n      900000002\n    ]\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const url = pm.variables.replaceIn(pm.request.url.toString());",
+                  "const m = url.match(/^https?:\\/\\/([^\\/:]+)(?::(\\d+))?([^?]*)/);",
+                  "const method = pm.request.method.toUpperCase();",
+                  "let signed = method + m[1] + decodeURIComponent(m[3]);",
+                  "if (['POST', 'PUT', 'PATCH'].includes(method)) { signed += CryptoJS.MD5(pm.variables.replaceIn(pm.request.body.raw)).toString(); }",
+                  "pm.request.headers.upsert({ key: 'x-guard-secret', value: CryptoJS.HmacSHA256(signed, pm.variables.get('guardKey')).toString() });"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "paymentUrl",
+      "value": "http://localhost:82"
+    },
+    {
+      "key": "domainId",
+      "value": "1"
+    },
+    {
+      "key": "playerId",
+      "value": "1"
+    },
+    {
+      "key": "cfgA",
+      "value": "1"
+    },
+    {
+      "key": "guardKey",
+      "value": ""
+    }
+  ]
+}

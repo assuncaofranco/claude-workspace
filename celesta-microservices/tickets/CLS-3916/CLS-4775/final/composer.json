@@ -1,0 +1,137 @@
+{
+    "name": "lancasters/backoffice",
+    "license": "proprietary",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "repositories": [
+        {"type": "composer", "url": "https://repo.packagist.com/lancastersolutions/"}
+    ],
+    "require": {
+        "php": ">=8.5",
+        "ext-bcmath": "*",
+        "ext-curl": "*",
+        "ext-gd": "*",
+        "ext-intl": "*",
+        "ext-json": "*",
+        "ext-openssl": "*",
+        "ext-pcntl": "*",
+        "ext-pdo_mysql": "*",
+        "ext-redis": "*",
+        "ext-simplexml": "*",
+        "ext-tokenizer": "*",
+        "ext-xml": "*",
+        "ext-xmlreader": "*",
+        "ext-xmlwriter": "*",
+        "aws/aws-sdk-php-symfony": "^2.0",
+        "baldinof/roadrunner-bundle": "^3.4",
+        "celesta/activity-logging-bundle": "^2.18",
+        "celesta/custom-attributes-bundle": "^2.7",
+        "celesta/messenger-helper-bundle": "^3.0",
+        "composer/class-map-generator": "^1.1",
+        "doctrine/dbal": "^3.4",
+        "doctrine/doctrine-bundle": "^2.8",
+        "doctrine/doctrine-migrations-bundle": "^3.2",
+        "doctrine/orm": "^2.19.3",
+        "firebase/php-jwt": "^7.0",
+        "gaufrette/aws-s3-adapter": "^0.4.0",
+        "giggsey/libphonenumber-for-php": "^8.9",
+        "knplabs/knp-gaufrette-bundle": "0.9",
+        "lancasters/constants": "^1.367",
+        "lancasters/curl-library": "^2.27",
+        "lancasters/guard-library-bundle": "~2.3.16",
+        "lancasters/homepage-bundle": "^1.0",
+        "lancasters/job-library": "dev-CLS-4768 as 3.152",
+        "lancasters/monolog-helper-bundle": "^4.0",
+        "lancasters/symfony-components": "^1.10",
+        "lcobucci/jwt": "^5.0",
+        "monolog/monolog": "^3.0",
+        "nyholm/psr7": "^1.7",
+        "sonata-project/google-authenticator": "^2.3",
+        "spiral/roadrunner": "^2025.1",
+        "stof/doctrine-extensions-bundle": "^1.10",
+        "symfony/asset": "7.4.*",
+        "symfony/cache": "7.4.*",
+        "symfony/config": "7.4.*",
+        "symfony/console": "7.4.*",
+        "symfony/dependency-injection": "7.4.*",
+        "symfony/dotenv": "7.4.*",
+        "symfony/expression-language": "7.4.*",
+        "symfony/form": "7.4.*",
+        "symfony/framework-bundle": "7.4.*",
+        "symfony/http-foundation": "7.4.*",
+        "symfony/intl": "7.4.*",
+        "symfony/lock": "7.4.*",
+        "symfony/monolog-bundle": "^3.8",
+        "symfony/process": "7.4.*",
+        "symfony/property-access": "7.4.*",
+        "symfony/psr-http-message-bridge": "7.4.*",
+        "symfony/runtime": "7.4.*",
+        "symfony/security-bundle": "7.4.*",
+        "symfony/serializer": "7.4.*",
+        "symfony/translation": "7.4.*",
+        "symfony/uid": "7.4.*",
+        "symfony/validator": "7.4.*",
+        "symfony/workflow": "7.4.*",
+        "symfony/yaml": "7.4.*",
+        "twig/twig": "^3.26",
+        "vich/uploader-bundle": "^2.0",
+        "zircote/swagger-php": "^4.8"
+    },
+    "require-dev": {
+        "brianium/paratest": "^7.8",
+        "hautelook/alice-bundle": "^2.13",
+        "lancasters/celesta-dev": "^1.26",
+        "lancasters/celesta-fixtures": "^1.241",
+        "phpunit/phpunit": "^11.5",
+        "spiral/roadrunner-cli": "^2.7",
+        "symfony/browser-kit": "7.4.*",
+        "symfony/debug-bundle": "7.4.*",
+        "symfony/twig-bridge": "7.4.*",
+        "symfony/web-profiler-bundle": "7.4.*"
+    },
+    "scripts": {
+        "post-install-cmd": [
+            "CelestaDev\\Git\\Integrator::integrate"
+        ],
+        "post-update-cmd": [
+            "CelestaDev\\Git\\Integrator::integrate"
+        ]
+    },
+    "config": {
+        "bin-dir": "bin",
+        "vendor-dir": "vendor",
+        "sort-packages": true,
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true,
+            "symfony/runtime": true
+        }
+    },
+    "conflict": {
+        "symfony/clock": ">=8.0",
+        "symfony/dom-crawler": ">=8.0",
+        "symfony/error-handler": ">=8.0",
+        "symfony/event-dispatcher": ">=8.0",
+        "symfony/options-resolver": ">=8.0",
+        "symfony/password-hasher": ">=8.0",
+        "symfony/routing": ">=8.0",
+        "symfony/security-core": ">=8.0",
+        "symfony/security-csrf": ">=8.0",
+        "symfony/security-http": ">=8.0",
+        "symfony/string": ">=8.0",
+        "symfony/twig-bundle": ">=8.0",
+        "symfony/type-info": ">=8.0",
+        "symfony/var-dumper": ">=8.0"
+    },
+    "description": "BackOffice MS",
+    "prefer-stable" : true,
+    "minimum-stability": "stable"
+}

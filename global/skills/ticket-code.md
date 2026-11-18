@@ -50,8 +50,9 @@ biblioteca compartilhada, verificar que o `composer.json` do serviço já aponta
 composer só sobe para uma tag estável depois do aceite de QA/PO. Se ainda não aponta para a branch de
 desenvolvimento, sinalizar e corrigir isso primeiro.
 
-Nota: `dev-<branch>` no composer, não repositório `path` local — o `path` funciona na sua máquina e
-quebra em qualquer outro lugar.
+Nota: pela branch, não por repositório `path` local — o `path` funciona na sua máquina e quebra em
+qualquer outro lugar. O formato exato do pin, e quem troca pela tag e quando, está no overlay do
+projeto.
 
 **Nome de arquivo de migration.** Nunca escrever à mão o nome/classe `Version<timestamp>`. Gerar com
 o comando de geração do framework e preencher o `up()`/`down()` do stub. Timestamp escolhido à mão —

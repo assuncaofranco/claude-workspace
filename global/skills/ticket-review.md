@@ -8,7 +8,7 @@ argument-hint: <TICKET or branch/PR>
 Reviews `$ARGUMENTS`, after `ticket-understand` has established the business intent and current logic. Don't review code cold, against the diff alone — you need the same "what was this supposed to change" context a review needs to be worth anything.
 
 ## Steps
-1. Read the ticket's spec and plan where the project's SDD keeps them (overlay — at Celesta, the parent's description and the sub-task's) to understand original intent before touching any code. A `_specs/`/`_plans/` file in the repo is legacy, not the source.
+1. Read the ticket's spec and plan where the project's SDD keeps them (overlay) to understand original intent before touching any code. Old-SDD files the overlay marks as legacy are history, not the source.
 2. Check out or read the branch/PR being reviewed.
 3. Verify the implementation matches the spec and plan — flag any divergence *before* evaluating code quality. A correct-looking implementation of the wrong thing is still wrong.
 4. **Check the variation matrix cell by cell** (`ticket-matrix`: `matrix.md` in the ticket's folder; its criteria are in the spec. On someone else's ticket there is no `matrix.md`: the spec's criteria are what exists). Read the existing matrix — do not rebuild it, and do not accept the implementation as evidence of what it should cover. For each cell: an **A** cell needs a code path and a collection run; an **E** cell's cited shared method must actually be shared in the code as it now stands (a ticket that introduced a branch there silently broke the equivalence, and that's a real finding); an **N** cell's excluding branch must still exclude it. A ticket with no matrix is a finding in itself — say so before reviewing anything else.

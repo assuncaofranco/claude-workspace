@@ -1,6 +1,26 @@
 # Ambiente e stack
 
-Quando o problema não é o código. Carregado no passo 12 (lint e testes) e no oncall.
+Quando o problema não é o código. Carregado no passo 2 (ler o código), no 12 (lint e testes) e no
+oncall.
+
+## Master atualizado antes de começar
+
+Antes de ler código ou começar trabalho num repositório: `git fetch origin` e master local em
+fast-forward para `origin/master`. Na branch em que o repositório estiver, sem trocar: com master
+aberto e limpo, `git merge --ff-only origin/master`; em outra branch, `git fetch origin master:master`.
+Repositório sujo ou fast-forward impossível: não forçar, contar ao Lucas.
+
+E toda leitura de código para conferir ou responder sai do `origin/master`
+(`git show origin/master:<arquivo>`, `git grep <padrão> origin/master`), não da árvore de trabalho:
+a árvore está na branch do último ticket que tocou o repositório, não no que está em produção.
+
+**Por quê:** 2026-11-12 (15-Beedrill), os oito repositórios do sprint tinham o master local de 24 a
+680 commits atrás. O SDD não sofreu, porque lê e ramifica de `origin/master`; as conferências de
+código da avaliação sofreram, porque liam a árvore de trabalho, e tiveram de ser refeitas. Decisão do
+Lucas.
+
+**Como aplicar:** é o primeiro comando em cada repositório que o ticket toca, no início do ticket.
+Antes de rodar teste nele, a seção `make init` abaixo.
 
 ## Quebra de stack vai para o Lucas, nunca para um contorno
 
@@ -17,6 +37,26 @@ dois serviços.
 
 **Como aplicar:** dizer o que quebrou, o que eu fiz logo antes, e qual acho que é a causa. Então
 esperar.
+
+**E entregar o que ele roda no ambiente dele**, quando a saída depende de algo que só ele faz
+(login expirado, stack dele montada noutro checkout, hook que só passa no clone principal, build
+que pede credencial). Parar e contar sozinho deixa a escolha toda para ele; o que ele precisa é de
+uma ação pronta:
+
+- **Deixar o estado preparado do meu lado**: a branch certa no lugar certo, a árvore no estado em
+  que o comando dele vai passar, o patch guardado. Ele não deve ter de reconstruir nada.
+- **Dar o comando exato**, numa linha ou num bloco copiável, na ordem em que roda, com o diretório
+  e a branch dele. Se há mais de uma saída, uma recomendada e o porquê em uma frase, as outras uma
+  linha cada.
+- **Dizer o que esperar** (o hash, o "ok", a mensagem de erro que indica o caso) e o que devolver
+  para eu seguir.
+- **Nunca** pedir o que ele já recusou, nem propor derrubar a stack dele como atalho.
+
+**Por quê:** 2026-11-17/18 (CLS-3916, 4774): o hook de pre-commit do backoffice faz `docker compose
+exec php` no container montado no clone principal, então de um worktree ele nunca passa para arquivo
+novo. Não podia usar `--no-verify` sem pedido dele nem derrubar a stack. Preparei o clone principal na
+branch com as 18 mudanças em stage e dei a frase do commit; ele commitou, o hook rodou normal e o
+gate seguiu. Pedido dele: "coloca uma regra pra eu fazer no meu ambiente quando vc nao conseguir".
 
 **Distinguir de defeito de código do ticket**, que eu devo investigar e corrigir eu mesmo. O sinal é
 onde está o problema: no código que o ticket toca, ou na máquina.

@@ -58,15 +58,16 @@ linhas da lista. É o deploy que garante a ordem, não o texto. Migration só ad
 
 ## Onde vai
 
-- **Campos do ticket** quando o tracker tem (na Celesta: Deployment instructions, Rollback
-  instructions; Release note só para release de biblioteca, como `job-library: removed X`). É o que
-  quem faz o deploy lê de fato.
-- **No ticket pai também**, quando o ticket é sub-task (na Celesta, quem faz o deploy, o Marcello, lê
-  **só o pai**). A DI do pai junta a de todas as sub-tasks, inclusive as de outros devs: ler o que já
-  está no pai e nos irmãos antes de escrever, e encaixar os passos nossos na ordem, sem apagar os
-  deles (merge de QA, script, espera). Rollback na ordem inversa da lista inteira.
-  **Por quê:** Lucas, 2026-11-04 (CLS-3282): a DI que só morava na sub-task não chegava a quem faz o
-  deploy, e o pai pode ter passo de outro time que a nossa sub-task não conhece.
+- **Campos do ticket pai, nunca da sub-task** (na Celesta: Deployment instructions, Rollback
+  instructions; Release note só para release de biblioteca, como `job-library: removed X`). Quem faz
+  o deploy, o Marcello, lê **só o pai**. Ticket sem pai: os campos dele mesmo.
+  A DI do pai junta a de todas as sub-tasks, inclusive as de outros devs. Antes de escrever, ler o que
+  já está no pai (os campos **e** a seção de deploy que a spec às vezes traz na descrição) e nos
+  irmãos, e encaixar os passos nossos na ordem, sem apagar os deles (merge de QA, script, espera,
+  Dagster). Rollback na ordem inversa da lista inteira.
+  **Por quê:** Lucas, 2026-11-04 (CLS-3282, depois CLS-4486): a DI na sub-task não chega a quem faz o
+  deploy, e o pai tem passo de outro time que a nossa sub-task não conhece. No CLS-4486 escrevi só a
+  nossa parte no campo do pai e deixei de fora o BRH inteiro, que estava na descrição do pai.
 - **A mesma lista** na seção de post deployment da descrição de **cada** PR envolvido.
 - **Pasta do ticket** do overlay, `deployment-instructions.md`, com o porquê de cada passo — o
   raciocínio fica do nosso lado, não no ticket.

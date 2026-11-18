@@ -59,18 +59,20 @@ Two tables in `matrix.md` in the ticket's folder. The spec gets only the last co
 
 **Cases**
 
-| # | Cell | Class | Justification | Acceptance criterion |
-|---|---|---|---|---|
-| 1 | free_round × manual × EUR | A | — | given …, when …, then … |
-| 2 | free_round × automatic × EUR | E → 1 | same `RewardHandler::handle():112`, offeringMethod only gates segment resolution upstream | — |
+| # | Cell | Class | Justification | Acceptance criterion | Where | Proof |
+|---|---|---|---|---|---|---|
+| 1 | free_round × manual × EUR | A | — | given …, when …, then … | `PayoutHandler::combine():48` | collection `combine-two-requests`, `200`, `payout.requests = [1, 2]` |
+| 2 | free_round × automatic × EUR | E → 1 | same `RewardHandler::handle():112`, offeringMethod only gates segment resolution upstream | — | — | — |
 
 A dimension with a single possible value is not a dimension — drop it.
+
+**Where** and **Proof** are empty at sign-off and filled at implementation, one line per A-cell: the file and line that make the criterion true, and the test or collection request with the response that shows it. They are what Lucas reads instead of the diff — the delivery seen from the product, not from the code — and what `ticket-review` and `preprod-test` check against. Added 2026-11-11 (`ticket-story`): on a story with three sub-tasks in parallel, the diff is too much to read and the matrix is the only place that already lists what must be delivered.
 
 ## Downstream — the matrix is consumed, not filed
 
 - `ticket-postman` — one run per A-cell. The collection's iterations *are* the matrix rows.
 - `ticket-code` — an A-cell with no code path is an unimplemented requirement, not an edge case.
-- `ticket-review` — verify every A-cell is actually covered by the implementation and by the collection.
+- `ticket-review` — verify every A-cell is actually covered by the implementation and by the collection, and that Where and Proof are filled and true.
 - `preprod-test` — the preprod run executes A-cells only, and invents nothing new.
 
 ## Re-run it when
@@ -80,4 +82,4 @@ A dimension with a single possible value is not a dimension — drop it.
 - review or preprod finds a case the matrix didn't have. Add it, and record **why the enumeration missed it** — wrong source, or an unidentified dimension. That note is the only thing that makes the next matrix better.
 
 ## Next
-The project's spec, split and plan phases, then `db-query` and `ticket-postman`. The plan's testing strategy must describe each A-cell check (request and expected result), or the implementation's test loop never runs them. It describes them; it never names the collection.
+The project's spec, split and plan phases, then `db-query` and `ticket-postman`. Where the A-cell checks go in the plan, and in what terms, is `router.md` §2 ("Onde o SDD do projeto não cobre sozinho").

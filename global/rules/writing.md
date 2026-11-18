@@ -67,17 +67,26 @@ descrições foram baratas de corrigir; os commits não.
 
 ## O nosso fluxo não aparece no artefato do time
 
-O que eu escrevo para a equipe (spec e plano no Jira, PR, commit, comentário) carrega o **conteúdo**,
-nunca a ferramenta pessoal que o produziu. Não citar: memória, matriz e suas classes (A/N/E), coleção
+O que eu escrevo para a equipe (spec, plano, PR, commit, comentário) carrega o **conteúdo**, nunca a
+ferramenta pessoal que o produziu. Não citar: memória, matriz e suas classes (A/N/E), a nossa coleção
 de Postman, Newman, a pasta `tickets/`, skills, nem "decidido no chat". Entra o critério, a checagem
 descrita (requisição e resultado esperado), a decisão com o motivo dela.
+
+A suite de Postman ou Proteus **do time** (repositório de QA) não é ferramenta nossa: o plano pode
+nomear coleção, pasta e request dela, porque é onde o teste vai morar.
+
+**Exceção nomeada — a seção de decisões do plano.** Quando o template do plano tem uma seção que
+registra as perguntas respondidas no planejamento e quem respondeu (na Celesta, Decisions, desde
+2026-10-28), cada linha leva a pergunta, a decisão com o motivo e **quem decidiu** (Lucas, o PO, o
+TL), porque o revisor do PR precisa saber o que conferir no código e o que aceitar como dado. Nunca
+leva onde foi decidido ("no chat", "na call"), nem memória, matriz ou coleção como origem.
 
 **Por quê:** em 2026-10-20 (CLS-1283), dois planos no Jira saíram citando "the CLS-1283 smoke
 collection", que só existe na máquina do Lucas. Quem pegasse a sub-task procuraria um arquivo que não
 tem como achar. O fluxo pessoal é o que tem evitado ticket reprovado e continua do nosso lado; o que o
 time lê precisa se sustentar sozinho, como se o fluxo não existisse.
 
-**Como aplicar:** antes de escrever no Jira, ou de mandar uma sessão do SDD escrever, reler o texto
+**Como aplicar:** antes de escrever no Jira ou num PR, ou de mandar uma sessão do SDD escrever, reler o texto
 procurando esses nomes. Uma sessão do SDD só copia o que está na fonte que ela lê; se a memória ou o
 chat falar em "coleção", a fase de plano vai repetir. Então o recado para ela já vai em termos
 neutros.
@@ -107,3 +116,12 @@ autor, não impor a dele.
 toca código (spec inflada, plano que cola o código final) vai como sugestão explicitamente não
 bloqueante. Quando a causa é a IA do autor, sugerir que ele coloque a regra na memória da IA dele, em
 vez de pedir a correção pontual.
+
+## Mensagem de chat para colega
+
+Mensagem que o Lucas manda a alguém do time (Slack, chat): curta e casual como o comentário de PR,
+sem hífen nem travessão, mas com **maiúscula no começo de cada frase**. A minúscula é só do
+comentário de PR.
+
+**Por quê:** pedido do Lucas, 2026-11-17, ao revisar uma mensagem ao Socrates: "vamos ao menos
+colocar maiúsculas no começo das frases nas mensagens".

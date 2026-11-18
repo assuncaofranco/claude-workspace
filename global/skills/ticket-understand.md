@@ -23,6 +23,8 @@ This is a **debate between colleagues**, not a report. Concretely:
 
 3. **Confirm you're aligned before moving on.** Once the business logic and the intended change are clear between you and the user, that's the signal to move to `ticket-matrix` — enumerate every variant the change touches before anything gets specced — then scenario-building (`ticket-test`) and only after that, code (`ticket-code`).
 
+**Exceção nomeada — domínio que não é nosso** (`ticket-story`, Team A, 2026-11-11). Step 2 assumes the user owns the product intent. When the repository is not ours, he doesn't yet. The conversation stays the same shape — short exchanges, real opinions — but the product source changes: the code, the Product compendium and the public documentation in Notion come from me; he questions what doesn't make sense until we both agree; what neither of us can settle goes in one batch to the story's owner, drafted by me, posted by him. Decision of Lucas: discuss, don't delegate the understanding.
+
 While reading the code in step 2, note the branch points you hit — type enums, offering methods, states, flags. Don't enumerate them here (that's `ticket-matrix`), just don't lose them.
 
 ## Handoff — do not recreate spec/plan here

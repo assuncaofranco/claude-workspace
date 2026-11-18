@@ -15,6 +15,24 @@ de branches com PR aberto significa force-push.
 Uma skill **referencia o caminho**, nunca o valor. O valor entra na variável de ambiente de quem
 executa, em tempo de execução, e não é escrito de volta em disco.
 
+## 1Password, em transição
+
+Desde 2026-11-02 o destino é o 1Password; `~/.claude-secrets/` continua valendo até a migração ser
+conferida, e aí sai. Durante a transição, o que já está no 1Password é lido de lá.
+
+- O que fica em disco é a **referência** `op://cofre/item/campo`, nunca o valor.
+- Execução com `op run` (ou `op inject` para um arquivo temporário que o processo consome): o valor
+  vai direto para o processo e não passa por mim.
+- **`op read` e `op item get` com valor, nunca.** Imprimem o segredo, que fica no transcript.
+- Só referencio itens marcados com a tag combinada. Cofre de produção, nunca.
+
+**Por quê:** a sessão do CLI destrava com Touch ID e libera **todos** os cofres do usuário, inclusive
+os de produção. Criar um cofre dedicado exige admin da conta (403 em 2026-11-02). Então o limite é
+por regra, não por técnica; a restrição técnica só viria de uma service account com um cofre só, o
+que fica para quando algo precisar rodar sem o Lucas presente.
+
+Cofre, tag e conta estão no overlay do projeto.
+
 ## O que conta como credencial
 
 A fronteira é **"isto autentica alguém?"**, não "isto é interno".

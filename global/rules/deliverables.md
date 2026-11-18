@@ -8,13 +8,16 @@ projeto; aqui está a regra que decide o caminho.
 Spec e plano não ganham cópia em arquivo — nem no repositório do serviço, nem na pasta do ticket, nem
 como rascunho "para depois subir". Onde eles moram é do overlay do projeto.
 
-**Por quê:** o SDD da Celesta passou a guardar spec e plano no Jira (2026-10-14) justamente para não
-existir uma segunda cópia que diverge. Um `_specs/<ticket>.md` ao lado é exatamente essa segunda
-cópia, e quem lê o arquivo lê a versão errada.
+**Por quê:** cada artefato do SDD tem um lugar só para não existir uma segunda cópia que diverge. Um
+`_specs/<ticket>.md` ao lado é exatamente essa segunda cópia, e quem lê o arquivo lê a versão errada.
+O lugar muda com o playbook (na Celesta o plano saiu da descrição da sub-task e virou arquivo no
+repositório em 2026-10-28); a regra não muda: o lugar é o que o overlay diz hoje, e nenhum outro.
 
 **Como aplicar:** o que for decisão vai para o artefato pela fase do SDD que é dona dele — uma
 divergência descoberta no código volta para a spec ou para o plano (amend upstream), não para um
-arquivo novo. `_specs/` e `_plans/` antigos num serviço são legado: servem de histórico, não de fonte.
+arquivo novo, nem para o arquivo do plano editado à mão. Arquivos do SDD antigo num serviço são
+legado: servem de histórico, não de fonte. Quais são, e qual caminho parecido é o atual, está no
+overlay.
 
 ## Coleção e matriz ficam do nosso lado, nunca num repositório de serviço
 
@@ -58,6 +61,20 @@ subtasks. Nenhum desses cabe na branch de uma subtask, porque nenhuma delas é d
 
 Spec e plano continuam no lugar que o SDD dá a eles. O que vai para a pasta do épico é o que atravessa
 os tickets — o split ordena repositórios dentro de um pai, nunca pais entre si.
+
+## Sprint é índice, ticket é a unidade
+
+Decisão, matriz e achado de um ticket ficam na pasta do ticket, nunca na do sprint. A pasta do sprint
+(`sprints/<sprint>/`, overlay) guarda só o que é do sprint: `index.md` (tickets agrupados por épico,
+com link para a pasta de cada um, e as decisões que atravessam os tickets) e a avaliação do processo
+daquele sprint.
+
+**Por quê:** ticket atravessa sprint (o CLS-418 está aberto desde março) e o épico é um campo do Jira
+que muda. Caminho de pasta com sprint ou épico fica errado quando um dos dois muda; o id do ticket
+não muda. Decisão do Lucas, 2026-11-12.
+
+**Como aplicar:** agrupamento por épico é título no `index.md`, não diretório. Ticket que passa para o
+sprint seguinte ganha uma linha no índice novo; a pasta dele não se move.
 
 ## Instruções de deploy ficam com o ticket e com os PRs
 

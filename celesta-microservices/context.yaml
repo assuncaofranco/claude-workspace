@@ -17,7 +17,13 @@ paths:
   scripts: celesta-microservices/scripts
 
 secrets:
-  vault: ~/.claude-secrets
+  onepassword:                       # destino desde 2026-11-02; rules/secrets.md
+    account: wa-services.1password.eu
+    vault: Employee                  # cofre pessoal; criar cofre dedicado exige admin
+    tag: claude                      # só itens com esta tag são referenciados
+    item_prefix: claude-             # op://Employee/claude-<arquivo>/<seção>/<campo>; mapa no README do vault legado
+    never: [Oncall, PEM prod, Shared, Storage credentials prod]
+  vault: ~/.claude-secrets           # legado, até a migração ser conferida
   files:
     dev: celesta-dev.md              # fixtures locais, GUARD_KEY, usuários seeded
     preprod: celesta-preprod.md      # OAuth BO/Gateway pp1, contas de teste, hosts
@@ -81,20 +87,27 @@ shared_libraries:
     holds: fixtures compartilhadas entre serviços
 
 # ─────────────────────────────────────────────────────────────────────────────
-# SDD — plugin celesta-engineering-playbook. Spec e plano moram no Jira, nunca
-# em arquivo. _specs/, _plans/ e .claude/commands/{spec,plan}.md são legado.
+# SDD — plugin celesta-engineering-playbook. Spec no Jira; plano em
+# .sdd/_plans/<KEY>.md no repo (0.42.0, 2026-10-28). _specs/, _plans/, sdd/ na
+# raiz e .claude/commands/{spec,plan}.md são do SDD antigo: legado.
 # ─────────────────────────────────────────────────────────────────────────────
 sdd:
   plugin: celesta-engineering-playbook@celesta-claude-marketplace
   jira: {site: celesta.atlassian.net, project: CLS, project_id: 10243}
   spec: descrição do ticket pai                    # sdd-spec
-  plan: descrição da sub-task                      # sdd-plan
+  plan: .sdd/_plans/<KEY>.md na branch <KEY>       # sdd-plan; PR contra o master, código entra no mesmo PR
+  plan_commit: '<KEY>: plan'                        # emenda: '<KEY>: plan amended — <motivo>'
+  subtask_description: todo list do sdd-split      # nunca é o plano
   repo_field: customfield_11435                    # nome cru, ex. celesta-crm; texto livre, sem validação
   order_link: {type: Blocks, id: 10000}            # inward bloqueia outward; sem ciclo
-  labels: {parent: sdd-spec, subtask: [sdd-split, sdd-plan, sdd-implement]}
-  branch: '<KEY>'                                  # chave crua da sub-task, ex. CLS-2967
+  labels: {parent: [sdd-spec, sdd-split], subtask: [sdd-plan, sdd-implement]}
+  branch: '<KEY>'                                  # chave crua da sub-task, ex. CLS-2967; criada pelo sdd-plan
   commit: '<KEY>: descrição curta'                 # passa no regex de commit:
   plan_gate: [Implementation Tasks, File Changes, Testing Strategy]   # o que o sdd-implement exige
+  plan_tests: {unit: Testing Strategy, proteus: Proteus tests}   # Postman tests saiu na 0.47
+  implement_steps: [unit, review (8 sdd-reviewer-* no PR), proteus (opcional)]   # proteus contra baseline do master
+  test_repos: {proteus: celesta-qaa-proteus, mock: celesta-qaa-mock}
+  release: {repo: celesta-releases, file: 'releases/<PARENT>.yaml', branch: main, parent_field: customfield_10122}   # campo só recebe o link se vazio
   connectors: [Atlassian, Notion, GitHub]          # spec e split recusam sem Notion
   notion: [Team components, Product compendium]
   service_desks: {O: infraestrutura, QAA: automação de QA}   # nunca sub-task, sempre request

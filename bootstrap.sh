@@ -72,6 +72,8 @@ link_dir "$CLAUDE/projects/-Users-l-franco-Desktop-celesta-projects/memory" \
          "$REPO/celesta-microservices/memory" "memória do projeto celesta"
 link_dir "$CLAUDE/projects/-Users-l-franco-Desktop-infra/memory" \
          "$REPO/celesta-infra/memory"         "memória do projeto infra"
+link_dir "$CLAUDE/projects/-Users-l-franco-Desktop-personal-projects-sociosdobrasil/memory" \
+         "$REPO/sociosdobrasil/memory"        "memória do projeto sociosdobrasil"
 
 echo
 echo "  ${DIM}stub de CLAUDE.md${OFF}"

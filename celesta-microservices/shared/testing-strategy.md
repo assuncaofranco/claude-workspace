@@ -13,8 +13,17 @@
 ### Behat (confirmed: celesta-promotion)
 - Location: `/features/`
 - Runner: Behat
-- Command (inside Docker): `vendor/bin/behat`
+- Command (inside Docker): `bin/behat` (the `make test` target runs it after phpunit)
 - Used for behaviour-driven acceptance tests against real service behaviour
+- Run the whole suite, not one file: `features/deposit_tier/reward/*.feature` fails in isolation even on
+  `master` (2026-10-27, CLS-3676), so a red isolated run proves nothing
+- A step pattern like `promotion(s)` matches `promotion` or `promotions`, never the literal `(s)`;
+  an "undefined" step with the right words is usually this
+- Deposit steps: `the player makes a deposit of` always sends transaction 123 and the configuration
+  the aggregator step creates has `playerPromotionLimit` 1, so a repeated deposit there is absorbed by
+  the limit, not by the engine. For an explicit transaction id and the production `DepositJob` path use
+  `I process the deposit job with transaction ID …` (`features/standard/reward/deposit_status_events.feature`)
+  and `the promotion … has a player promotion limit of N`
 
 ## General Principles
 - Never run tests directly on the host — always inside the Docker container

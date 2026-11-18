@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 7c16fbf2-1a26-475a-8ca1-a2bb9c56e895
-  modified: 2026-10-20T13:07:20.300Z
+  modified: 2026-10-30T08:38:11.703Z
 ---
 
 Nossos MS, segundo o Lucas (2026-10-20): **celesta-game, celesta-promotion, celesta-cms, celesta-cms-v2 e celesta-contact**.
@@ -17,9 +17,11 @@ terminar a remoção do bônus da wallet (épico CLS-1277, limpeza CLS-1283). Ve
 **Backoffice e gateway não são nossos, mas são a porta de entrada de todos os serviços.** Quando uma
 implementação nossa depende deles, mexemos neles no que diz respeito ao nosso ticket. A administração
 deles (manutenção geral, dívida técnica alheia ao ticket, decisões de arquitetura) não é nossa.
+Reconfirmado pelo Lucas em 2026-10-30 (CLS-4314). A empresa muda essa política com frequência: na dúvida, perguntar
+em vez de confiar nesta linha.
 
 **Why:** isso não estava registrado em lugar nenhum (nem no `context.yaml`, nem na memória; a página Team components do Notion não foi consultada),
 e define o que significa "nossos MS" quando o Lucas pede uma varredura ou uma limpeza "sem rastro".
 
-**How to apply:** varredura ou limpeza "nos nossos serviços" = esses quatro, mais a wallet enquanto o
+**How to apply:** varredura ou limpeza "nos nossos serviços" = esses cinco, mais a wallet enquanto o
 CLS-1283 não fecha. BO e gateway entram quando o nosso ticket passa por eles, limitados ao que o ticket toca.

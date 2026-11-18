@@ -5,12 +5,19 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 662bddd6-2b1f-4f08-838f-27648f0a4cf5
-  modified: 2026-10-12T06:29:04.311Z
+  modified: 2026-11-16T10:21:49.204Z
 ---
 
-Na Celesta o desenvolvedor **não pode rodar o CI no próprio PR**. A pipeline só dispara com uma
-aprovação, então os devs aprovam os PRs uns dos outros — e essa aprovação existe para destravar o CI,
-não porque alguém leu o código. Vale nos dois sentidos: nos PRs do Lucas e nos que ele revisa
+**Mudou com o CEL-9751 (SSD-954):** o CI **não roda mais por aprovação**. Numa branch ele só roda
+por `workflow_dispatch` (`gh workflow run ci.yml -R celesta-tech/<repo> --ref <branch>`, ou o botão
+no Actions); o marcador `[run-ci]` no commit, que existiu de 12 a 13/11, foi revertido
+(`CEL-9751-rollback-keep-dispatch`, 2026-11-13, em todos os repos). Push comum sai com todos os jobs
+`skipped`; master e tags `v**` rodam em todo push. Release e deploy continuam só no master. Quando
+disparar está em `global/skills/ticket-story.md`.
+
+Antes disso, o desenvolvedor **não podia rodar o CI no próprio PR**: a pipeline só disparava com uma
+aprovação, então os devs aprovavam os PRs uns dos outros, e essa aprovação existia para destravar o CI,
+não porque alguém leu o código. Aprovações antigas continuam sendo lidas assim. Vale nos dois sentidos: nos PRs do Lucas e nos que ele revisa
 (CLS-3290, 2026-10-12: duas aprovações e um review dele DISMISSED, nenhum era review). Toda aprovação
 anterior ao review do board é ignorada, não reportada.
 

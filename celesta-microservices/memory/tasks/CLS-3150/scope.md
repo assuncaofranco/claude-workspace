@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 7c16fbf2-1a26-475a-8ca1-a2bb9c56e895
-  modified: 2026-10-21T10:37:45.523Z
+  modified: 2026-11-02T10:59:07.785Z
 ---
 
 Sub-task sem descrição do CLS-1283 (épico CLS-1277), atribuída ao Lucas. As irmãs (1624, 2485, 2759,
@@ -109,6 +109,12 @@ E do cell 6 vale: nenhum `services_*` separado para console/consumer); CI verde 
 botão, inclusive `build / images` do cms-v2 (fecha o `build:force` que a sessão não rodou). Rasoul já
 aprovou os 4 (carimbo para CI). Nenhum achado. Decisão do passo 15: só conferência rápida pós-deploy num
 PP (pods + `/_health` cms-v2 + token/`/ping` gateway), sem teste completo.
+
+**2026-11-02:** wallet #1917 tinha conflito (CLS-4004 mexeu no `FlipperClient` no master); resolvido
+mantendo a remoção, merge `754480f99` commitado com `-n` (hook lintava 318 arquivos do master, decisão
+do Lucas) e pushado. **Gateway: o CLS-3565 (`df6a73013`, Makennsky, 2026-10-26) já removeu o Flipper do
+master**, então o #1534 ficou vazio: fechado com comentário e CLS-3905 → Cancelled. BO #3267 e cms-v2 #141
+sem conflito.
 
 **Why:** o objetivo é não deixar rastro do Flipper nos nossos MS; o que os outros times usam não muda.
 **How to apply:** próximo passo é `ticket-matrix`. Remoção pura, sem flag lida, então a matriz deve sair quase toda célula A.
